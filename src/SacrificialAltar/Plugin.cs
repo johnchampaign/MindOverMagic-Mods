@@ -16,7 +16,7 @@ public sealed class Plugin : BaseUnityPlugin
 {
     public const string PluginGuid = "ca.johnc.mindovermagic.sacrificialaltar";
     public const string PluginName = "Sacrificial Altar";
-    public const string PluginVersion = "1.2.5";
+    public const string PluginVersion = "1.3.0";
     internal static ManualLogSource ModLog { get; private set; } = null!;
 
     private void Awake()
@@ -358,6 +358,48 @@ internal static class RoomCatalogLoadPatch
     }
 }
 
+[HarmonyPatch(typeof(ResearchTechCatalog), nameof(ResearchTechCatalog.Load))]
+internal static class ResearchCatalogLoadPatch
+{
+    [System.ThreadStatic] private static bool _loadingMod;
+
+    [HarmonyPostfix]
+    private static void Register(ResearchTechCatalog __instance, YamlParserType __1)
+    {
+        var researchId = new DefId<ResearchTechDefinition> { Key = "SacrificialRites" };
+        if (_loadingMod || __instance.TryGetDefinition(researchId, out _))
+        {
+            return;
+        }
+
+        _loadingMod = true;
+        try
+        {
+            var modCatalog = new ResearchTechCatalog();
+            modCatalog.Load(ModContent.Root, __1);
+            foreach (var definition in modCatalog.AllDefinitions())
+            {
+                __instance.Add(definition);
+            }
+
+            // Constructing the temporary catalog redirects the generic static
+            // Instance. Restore the game catalog that received the definitions.
+            DefinitionCatalog<ResearchTechDefinition>.Instance = __instance;
+            Plugin.ModLog.LogInfo(
+                "Injected the Sacrificial Rites research topic before research finalization.");
+        }
+        catch (Exception exception)
+        {
+            Plugin.ModLog.LogError(
+                $"Failed to inject the Sacrificial Rites research topic: {exception}");
+        }
+        finally
+        {
+            _loadingMod = false;
+        }
+    }
+}
+
 [HarmonyPatch(typeof(ConfigBundle), "PostLoad")]
 internal static class WallpaperCatalogLoadPatch
 {
@@ -392,8 +434,6 @@ internal static class WallpaperCatalogLoadPatch
                     "The live config bundle could not resolve the Sacrificial Altar archetype.");
             }
 
-            AddDarkArtsResearchUnlock(__instance);
-
             var modCatalog = new WallpaperCatalog();
             modCatalog.Load(ModContent.Root, YamlParserType.YamlDotNet);
             foreach (var definition in modCatalog.AllDefinitions())
@@ -414,112 +454,6 @@ internal static class WallpaperCatalogLoadPatch
         }
     }
 
-    private static void AddDarkArtsResearchUnlock(ConfigBundle config)
-    {
-        ResearchTechDefinition? darkArts = null;
-        foreach (var definition in config.ResearchTechCatalog.AllDefinitions())
-        {
-            if (definition.Id.Key == "AdvancedDarkI")
-            {
-                darkArts = definition;
-                break;
-            }
-        }
-
-        if (darkArts?.Reward?.RewardKeys == null)
-        {
-            throw new InvalidOperationException(
-                "Could not find the Dark Arts research rewards while registering the altar unlock.");
-        }
-
-        foreach (var rewardKey in darkArts.Reward.RewardKeys)
-        {
-            if (rewardKey.Key == "SacrificialAltar")
-            {
-                return;
-            }
-        }
-
-        darkArts.Reward.RewardKeys.Add(new DefId<Archetype>
-        {
-            Key = "SacrificialAltar"
-        });
-        Plugin.ModLog.LogInfo("Added Sacrificial Altar as a Dark Arts research reward.");
-    }
-}
-
-[HarmonyPatch(typeof(View.ResearchNew.ResearchSelectedWidget), "Update")]
-internal static class DarkArtsResearchPresentationPatch
-{
-    private const string DarkArtsKey = "AdvancedDarkI";
-    private const string AltarKey = "SacrificialAltar";
-    private static bool _logged;
-
-    [HarmonyPrefix]
-    private static void SynchronizeReward(ResearchTechDefinition __0)
-    {
-        if (__0?.Id.Key != DarkArtsKey)
-        {
-            return;
-        }
-
-        var screenDefinition = __0;
-        EnsureRewardKey(screenDefinition);
-
-        ResearchTechDefinition? staticDefinition = null;
-        var staticCatalog = DefinitionCatalog<ResearchTechDefinition>.Instance;
-        if (staticCatalog != null &&
-            staticCatalog.TryGetDefinition(screenDefinition.Id, out var resolvedStaticDefinition))
-        {
-            staticDefinition = resolvedStaticDefinition;
-            EnsureRewardKey(staticDefinition);
-        }
-
-        ResearchTechDefinition? bundleDefinition = null;
-        var bundle = IConfigBundleProvider.Instance?.ConfigBundle;
-        var bundleHasAltar = false;
-        if (bundle != null)
-        {
-            if (bundle.ResearchTechCatalog.TryGetDefinition(
-                    screenDefinition.Id, out var resolvedBundleDefinition))
-            {
-                bundleDefinition = resolvedBundleDefinition;
-                EnsureRewardKey(bundleDefinition);
-            }
-
-            bundleHasAltar = bundle.Archetypes.TryGetArchetypeFromStringKey(
-                AltarKey, out _);
-        }
-
-        if (!_logged)
-        {
-            _logged = true;
-            Plugin.ModLog.LogInfo(
-                "Synchronized the Dark Arts altar reward at the research UI boundary: " +
-                $"screen/static same={ReferenceEquals(screenDefinition, staticDefinition)}, " +
-                $"screen/bundle same={ReferenceEquals(screenDefinition, bundleDefinition)}, " +
-                $"bundle resolves altar={bundleHasAltar}, " +
-                $"screen rewards={screenDefinition.Reward?.RewardKeys?.Count ?? 0}, " +
-                $"static rewards={staticDefinition?.Reward?.RewardKeys?.Count ?? 0}, " +
-                $"bundle rewards={bundleDefinition?.Reward?.RewardKeys?.Count ?? 0}.");
-        }
-    }
-
-    private static void EnsureRewardKey(ResearchTechDefinition definition)
-    {
-        definition.Reward ??= new ResearchTechDefinition.UnlockReward();
-        definition.Reward.RewardKeys ??= new List<DefId<Archetype>>();
-
-        foreach (var rewardKey in definition.Reward.RewardKeys)
-        {
-            if (rewardKey.Key == AltarKey)
-            {
-                return;
-            }
-        }
-
-        definition.Reward.RewardKeys.Add(new DefId<Archetype> { Key = AltarKey });
-    }
 }
 
 [HarmonyPatch(typeof(BuildableUtils), nameof(BuildableUtils.GetBuildableArchetypes))]
@@ -549,7 +483,7 @@ internal static class BuildableArchetypePatch
 internal static class AltarResearchVisibilityPatch
 {
     private const string AltarKey = "SacrificialAltar";
-    private const string RequiredResearchKey = "AdvancedDarkI";
+    private const string RequiredResearchKey = "SacrificialRites";
     private static bool? _lastUnlockedState;
 
     [HarmonyPrefix]
@@ -586,8 +520,8 @@ internal static class AltarResearchVisibilityPatch
         {
             _lastUnlockedState = unlocked;
             Plugin.ModLog.LogInfo(unlocked
-                ? "Dark Arts is complete; the Sacrificial Altar is available in the build menu."
-                : "Dark Arts is incomplete; the Sacrificial Altar is hidden from the build menu.");
+                ? "Sacrificial Rites is complete; the Sacrificial Altar is available in the build menu."
+                : "Sacrificial Rites is incomplete; the Sacrificial Altar is hidden from the build menu.");
         }
     }
 

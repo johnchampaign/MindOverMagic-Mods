@@ -1,5 +1,14 @@
 # Changelog
 
+## Bundle v1.1.0 - 2026-07-19
+
+### Sacrificial Altar 1.3.0
+
+- Add a dedicated Tier II **Sacrificial Rites** research topic requiring Dark
+  Arts and costing 3,000 research.
+- Make Sacrificial Rites solely responsible for unlocking the altar instead of
+  appending a clipped third reward card to the fixed-width Dark Arts reward row.
+
 ## Bundle v1.0.3 - 2026-07-19
 
 ### Sacrificial Altar 1.2.5

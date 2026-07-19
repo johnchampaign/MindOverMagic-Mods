@@ -1,0 +1,19 @@
+- Id: { Key: SacrificialRites }
+  Codex:
+    Tags:
+    - { Key: Research }
+    - { Key: ResearchTier2 }
+  ResearchTier: { Key: Tier2 }
+  Category: Teaching
+  DisplayName:
+    Text: Sacrificial Rites
+    Key: Mod.SacrificialRites.DisplayName
+  ResearchedAt:
+  - { Key: ResearchBench }
+  UnlockKeys:
+  - { Key: AdvancedDarkI }
+  Reward:
+    RewardKeys:
+    - { Key: SacrificialAltar }
+  CastsRequired: 3000
+  LayoutLocation: { X: 6260, Y: -17560, WidgetHeight: 320, WidgetWidth: 820 }

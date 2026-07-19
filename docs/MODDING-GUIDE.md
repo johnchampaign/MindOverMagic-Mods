@@ -280,6 +280,21 @@ whether the exact catalog used by the UI resolves the custom archetype. A
 successful load-time message is not proof that a later UI consumer sees the
 same object graph.
 
+Also distinguish missing data from clipped presentation. In one concrete case,
+the final research widget saw three reward keys, all three definition objects
+were identical across catalogs, and the custom archetype resolved successfully;
+the native Dark Arts panel still displayed only its two original cards. Its
+fixed-width horizontal reward row clipped the appended third card. When a native
+topic already fills its visible reward capacity, create a dedicated research
+definition with its own node and reward row instead of continuing to patch the
+native topic.
+
+Custom research definitions should be injected before
+<code>ResearchTechCatalog.Finalize</code>, use a unique ID, declare their tier,
+prerequisite keys, research stations, cost, reward, and an unoccupied layout
+location. Gate the build menu against the custom research ID so the visible
+topic and actual unlock condition cannot drift apart.
+
 <code>RitualSiteConfig.NotShownInResearchUI</code> controls presentation of the
 derived ritual-site reward. It does not repair an archetype reward key that the
 live bundle cannot resolve. Decide separately whether research should show the

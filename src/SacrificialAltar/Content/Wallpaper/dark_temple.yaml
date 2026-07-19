@@ -1,0 +1,11 @@
+- Id: { Key: DarkTempleDefault }
+  RoomTypeId: { Key: DarkTemple }
+  DisplayName:
+    Text: Dark Temple
+    Key: Mod.DarkTemple.Wallpaper.DisplayName
+  IsDefault: true
+  Materials:
+    { Key: Sidewall }: DarkClassroom
+    { Key: Floor }: DarkClassroom
+    { Key: HallwayBlock }: DarkClassroom
+  BackwallMaterial: DarkClassroom

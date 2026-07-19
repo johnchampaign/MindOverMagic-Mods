@@ -1,0 +1,33 @@
+# Changelog
+
+## Bundle v1.0.0 - 2026-07-19
+
+First public bundle release.
+
+### Character Level Relics 1.1.0
+
+- Determine manifested relic level caps from mage level and completed trials.
+- Remove wand-tier and completed-apprenticeship contributions.
+- Preserve the level-24 manifested-relic maximum.
+
+### Faction Balance 1.0.0
+
+- Change Raven Cult Power growth from S to A.
+- Change Shattered Power growth from A to S.
+- Reduce Raven Cult base HP from 150 to 125 by default.
+- Reduce Raven Cult damage bonus from 20 to 10 by default.
+- Make the Raven Cult numerical changes configurable.
+
+### Sacrificial Altar 1.2.2
+
+- Add the Sacrificial Altar, its procedural in-world model, build icon, costs,
+  construction behavior, and Dark Arts research requirement.
+- Add the Sacrifice for Relic ritual for Students, Apprentices, and Staff.
+- Preserve and return the selected relic after upgrading its level cap.
+- Kill the sacrifice, produce a corpse, and apply school-wide grief for two
+  days.
+- Add the Dark Temple room, +1 ritual bonus, room requirements, and automatic
+  dark room treatment.
+- Prevent the procedural prefab template from appearing near the entrance.
+- Hide the altar from the build menu until Dark Arts is completed.
+

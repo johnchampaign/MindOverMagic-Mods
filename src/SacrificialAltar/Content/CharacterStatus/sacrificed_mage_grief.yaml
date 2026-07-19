@@ -1,0 +1,23 @@
+- Id: { Key: SacrificedMageGrief }
+  Codex:
+    Tags:
+    - { Key: Status }
+    - { Key: Mood }
+  DisplayType: Info
+  DisplayName:
+    Text: Sacrificed Mage
+    Key: Mod.SacrificedMageGrief.DisplayName
+  DurationInGameHours: 48
+  Description:
+    Text: Horrified and grieving after a mage was sacrificed by the school.
+    Key: Mod.SacrificedMageGrief.Description
+  FlavorText:
+    Text: The empty place at the table is impossible to ignore.
+    Key: Mod.SacrificedMageGrief.FlavorText
+  LogString:
+    Text: "{0} {1}"
+    Key: Mod.SacrificedMageGrief.LogString
+  ShownInGroupRules: false
+  NeedRateChanges:
+  - NeedsType: Mood
+    TargetBias: -0.10

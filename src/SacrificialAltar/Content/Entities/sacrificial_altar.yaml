@@ -1,0 +1,100 @@
+- EntityKey: { Key: SacrificialAltar }
+  Codex:
+    Tags:
+    - { Key: Archetype }
+    - { Key: Buildable }
+    - { Key: Furniture }
+  Configs:
+  - !CompositeConfig
+    Category: Tables
+  - !DescriptionConfig
+    DisplayName:
+      Text: Sacrificial Altar
+      Key: Mod.SacrificialAltar.DisplayName
+    Description:
+      Text: Sacrifice a mage to permanently increase a selected Relic's maximum level.
+      Key: Mod.SacrificialAltar.Description
+    FlavorText:
+      Text: Power always has a price. This one has a name.
+      Key: Mod.SacrificialAltar.FlavorText
+  - !PlacementConfig
+    Size: {X: 3, Y: 3, Z: 3}
+    BlockingFlags: Standard
+    PlacementFlags: Room,Floor,Outside,Ground
+  - !CellUseConfig {}
+  - !AssembleCraftedErrandConfig
+    Inputs:
+      { Key: Stone }: 20
+      { Key: Viscera }: 5
+      { Key: Corpse_Carcass }: 5
+    CastsRequired: 48
+    FlatpackEntityKey: { Key: Flatpack }
+  - !ShopConfig
+    Category: { Key: Furniture }
+    SubCategory: { Key: Furniture_RitualsAndRelics }
+  - !DisassembleCraftedErrandConfig {}
+  - !DisintegrateCraftedErrandConfig {}
+  - !RenderConfig
+    PrefabKey: Mods/SacrificialAltar/Altar
+    WorldRootPath: Furniture
+    PlacementPivotLocation: Bottom
+    UIOffset: {Y: 2.5}
+  - !PriorityConfig {}
+  - !RitualSiteBookOfRitualsEntityConfig
+    BookOfRitualsSortMetric: 25
+    BookOfRitualsDescription:
+      Text: A dark altar that exchanges a mage's life for a Relic's greater potential.
+      Key: Mod.SacrificialAltar.BookDescription
+  - !RitualSiteRelicConfig {}
+  - !RitualSiteConfig
+    UniqueId: 1
+    RitualType: Basic
+    SequenceId: AltarOfFateRitual
+    Icon: Rituals/RitualIcons/Basic
+    SimMinutes: 180
+    StartRitualAudioEvent: Play_Activate_RitualSacrifice
+    StopRitualAudioEvent: Play_Exit_RitualSacrifice
+    WindowAmbienceStateValue: RITUAL_ORACULUM_WINDOW
+    NotShownInResearchUI: true
+    AppliedStatusAllMages: { Key: SacrificedMageGrief }
+    ButtonName:
+      Text: Sacrifice for Relic
+      Key: Mod.SacrificialAltar.Ritual.ButtonName
+    ButtonDescription:
+      Text: Sacrifice a mage to raise a Relic's maximum level.
+      Key: Mod.SacrificialAltar.Ritual.ButtonDescription
+    WindowDescription:
+      Text: |
+        Select a Relic and a mage to sacrifice. A Student raises the Relic's level cap by 1, an Apprentice by 2, and Staff by 3. Performing the ritual in a Dark Temple adds 1. The sacrifice dies and leaves a body that must be buried. Everyone in the school loses 10 Conviction for two days.
+      Key: Mod.SacrificialAltar.Ritual.WindowDescription
+    ArtifactSlot:
+      SlotName:
+        Text: Select Relic
+        Key: Mod.SacrificialAltar.Ritual.ArtifactSlot
+    Buckets:
+    - Name:
+        Text: Sacrifice
+        Key: Mod.SacrificialAltar.Ritual.Sacrifice
+      InteractionPoint: RitualBucketA
+      MinNeeded: 1
+      MaxAllowed: 1
+      RitualBucketAnimType: RitualSlotA
+      AppliedStatuses:
+      - { Key: PerformedRitual }
+      - { Key: Sacrificed }
+      Requirements:
+        RequiredComponent: Model.CharacterComponent
+      BucketPrefab: PositionMarkers/RitualSlot_01_A
+      BucketIcon: RitualSlot_A
+      BucketPositions:
+      - {X: 0, Z: -2}
+      BucketUniqueId: 0
+  - !InteractionPointsConfig
+    InteractionPoints:
+      RitualBucketA:
+      - Offset: {X: 0, Z: 2}
+        SelectionBias: 3
+      - Offset: {X: 1, Z: 2}
+        SelectionBias: 2
+      - Offset: {X: -1, Z: 2}
+        SelectionBias: 2

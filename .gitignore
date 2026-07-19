@@ -1,0 +1,12 @@
+.dotnet-home/
+.vs/
+.idea/
+**/bin/
+**/obj/
+artifacts/
+dist/
+BepInEx_win_*.zip
+vendor/
+tools/
+*.user
+*.suo

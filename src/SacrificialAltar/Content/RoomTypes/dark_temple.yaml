@@ -1,0 +1,72 @@
+- Id: { Key: DarkTemple }
+  Codex:
+    Tags:
+    - { Key: RoomType }
+    - { Key: Ritual }
+  Category: { Key: Rituals }
+  DisplayName:
+    Text: Dark Temple
+    Key: Mod.DarkTemple.DisplayName
+  Effects:
+  - Text: Sacrificial rituals performed here increase a Relic's level cap by an additional 1.
+    Key: Mod.DarkTemple.Effect
+  KeywordRules:
+    Original: { Key: NoKeywords }
+    OriginalRandom: { Key: NoKeywords }
+    Backcompat: { Key: NoKeywords }
+    BackcompatRandom: { Key: NoKeywords }
+    Minimal: { Key: NoKeywords }
+    Standard: { Key: NoKeywords }
+    StandardRandom: { Key: NoKeywords }
+    Wonky: { Key: NoKeywords }
+    WonkyRandom: { Key: NoKeywords }
+    Airy: { Key: NoKeywords }
+    AiryRandom: { Key: NoKeywords }
+    HeavyRandom: { Key: NoKeywords }
+    Basic: { Key: NoKeywords }
+  Priority: 13
+  PowerValue: 30
+  Rules:
+  - CriteriaComparison: AllTrue
+    Criteria:
+    - RequirementType: EntityKey
+      ArchetypeRequirement: { Key: SacrificialAltar }
+      Value: 1
+      Comparator: MoreThanOrEqual
+      ComponentRequirementDisplayName:
+        Text: Sacrificial Altars
+        Key: Mod.DarkTemple.AltarRequirement
+    - RequirementType: EntityKey
+      ArchetypeRequirement: { Key: Candelabra }
+      Value: 2
+      Comparator: MoreThanOrEqual
+      ComponentRequirementDisplayName:
+        Text: Candelabras
+        Key: Mod.DarkTemple.CandelabraRequirement
+    - RequirementType: Luxury
+      LuxuryType: { Key: Creepy }
+      Value: 20
+      Comparator: MoreThanOrEqual
+  - CriteriaComparison: NoneTrue
+    Criteria:
+    - RequirementType: Config
+      Requirement: Model.BedConfig
+      Value: 1
+      Comparator: MoreThanOrEqual
+      ComponentRequirementDisplayName:
+        Text: Beds
+        Key: Mod.DarkTemple.BedsRequirement
+    - RequirementType: Config
+      Requirement: Model.DiningErrandConfig
+      Value: 1
+      Comparator: MoreThanOrEqual
+      ComponentRequirementDisplayName:
+        Text: Dining Tables
+        Key: Mod.DarkTemple.DiningTablesRequirement
+    - RequirementType: Config
+      Requirement: Model.TeachingSpotConfig
+      Value: 1
+      Comparator: MoreThanOrEqual
+      ComponentRequirementDisplayName:
+        Text: Teaching Stations
+        Key: Mod.DarkTemple.TeachingStationsRequirement

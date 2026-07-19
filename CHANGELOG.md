@@ -1,5 +1,15 @@
 # Changelog
 
+## Bundle v1.0.2 - 2026-07-19
+
+### Sacrificial Altar 1.2.4
+
+- Fix the missing Sacrificial Altar card in the Dark Arts research description.
+- Register and validate the altar in the live config bundle catalog used by the
+  research UI, rather than relying on a potentially different load-time catalog.
+- Initialize every distinct config bundle once so an earlier temporary bundle
+  cannot prevent the live research bundle from receiving the reward.
+
 ## Bundle v1.0.1 - 2026-07-19
 
 ### Sacrificial Altar 1.2.3

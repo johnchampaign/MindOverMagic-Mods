@@ -16,7 +16,7 @@ public sealed class Plugin : BaseUnityPlugin
 {
     public const string PluginGuid = "ca.johnc.mindovermagic.sacrificialaltar";
     public const string PluginName = "Sacrificial Altar";
-    public const string PluginVersion = "1.2.3";
+    public const string PluginVersion = "1.2.4";
     internal static ManualLogSource ModLog { get; private set; } = null!;
 
     private void Awake()
@@ -249,13 +249,18 @@ internal static class PrefabResourcesInitPatch
 [HarmonyPatch(typeof(ConfigData), nameof(ConfigData.Load))]
 internal static class ArchetypeCatalogLoadPatch
 {
-    private static bool _injected;
     [System.ThreadStatic] private static bool _loadingMod;
 
     [HarmonyPostfix]
     private static void Register(ConfigData __instance, YamlParserType __1)
     {
-        if (_injected || _loadingMod)
+        EnsureAltarPresent(__instance, __1);
+    }
+
+    internal static void EnsureAltarPresent(ConfigData catalog, YamlParserType parser)
+    {
+        if (_loadingMod ||
+            catalog.TryGetArchetypeFromStringKey("SacrificialAltar", out _))
         {
             return;
         }
@@ -270,15 +275,13 @@ internal static class ArchetypeCatalogLoadPatch
         try
         {
             var modArchetypes = new ConfigData();
-            modArchetypes.Load(ModContent.Root, __1);
+            modArchetypes.Load(ModContent.Root, parser);
             foreach (var definition in modArchetypes.AllDefinitions())
             {
-                __instance.Add(definition);
+                catalog.Add(definition);
             }
-            ConfigData.Instance = __instance;
-            DefinitionCatalog<Archetype>.Instance = __instance;
-            _injected = true;
-            Plugin.ModLog.LogInfo("Injected Sacrificial Altar before archetype post-load indexing.");
+            Plugin.ModLog.LogInfo(
+                "Injected Sacrificial Altar into an archetype catalog before post-load indexing.");
         }
         catch (System.Exception exception)
         {
@@ -358,18 +361,37 @@ internal static class RoomCatalogLoadPatch
 [HarmonyPatch(typeof(ConfigBundle), "PostLoad")]
 internal static class WallpaperCatalogLoadPatch
 {
-    private static bool _injected;
+    private static readonly List<ConfigBundle> InitializedBundles = new();
 
     [HarmonyPrefix]
     private static void Register(ConfigBundle __instance)
     {
-        if (_injected)
+        foreach (var initializedBundle in InitializedBundles)
         {
-            return;
+            if (ReferenceEquals(initializedBundle, __instance))
+            {
+                return;
+            }
         }
 
         try
         {
+            // The research screen resolves RewardKeys through the archetype catalog
+            // owned by IConfigBundleProvider.ConfigBundle, not necessarily through
+            // whichever ConfigData instance happened to load first. Ensure this exact
+            // live catalog owns the altar before ResearchTechCatalog.Finalize runs.
+            ArchetypeCatalogLoadPatch.EnsureAltarPresent(
+                __instance.Archetypes, YamlParserType.YamlDotNet);
+            ConfigData.Instance = __instance.Archetypes;
+            DefinitionCatalog<Archetype>.Instance = __instance.Archetypes;
+
+            if (!__instance.Archetypes.TryGetArchetypeFromStringKey(
+                    "SacrificialAltar", out _))
+            {
+                throw new InvalidOperationException(
+                    "The live config bundle could not resolve the Sacrificial Altar archetype.");
+            }
+
             AddDarkArtsResearchUnlock(__instance);
 
             var modCatalog = new WallpaperCatalog();
@@ -380,9 +402,10 @@ internal static class WallpaperCatalogLoadPatch
             }
             DefinitionCatalog<WallpaperDefinition>.Instance =
                 __instance.WallpaperCatalog;
-            _injected = true;
+            InitializedBundles.Add(__instance);
             Plugin.ModLog.LogInfo(
-                "Injected the Dark Temple default wallpaper before config post-load.");
+                "Injected the Dark Temple default wallpaper and validated the altar " +
+                "in this config bundle's research archetype catalog before post-load.");
         }
         catch (Exception exception)
         {

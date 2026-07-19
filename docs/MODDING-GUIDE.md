@@ -250,11 +250,25 @@ item's <code>ShopConfig</code>.
 Perform reward-key injection before the research catalog finalizes its derived
 reward data. Make it idempotent by checking whether the key is already present.
 
-For ritual sites, <code>RitualSiteConfig.NotShownInResearchUI</code> must be
-<code>false</code> if the ritual/building should appear among the research
-topic's reward icons. This was an easy-to-miss case: the altar was correctly
-gated and its reward key existed, but Dark Arts showed only its original two
-rewards until this flag was corrected.
+The research UI does not necessarily resolve a reward through the static
+<code>ConfigData.Instance</code>. Its reward-cache path reads
+<code>IConfigBundleProvider.Instance.ConfigBundle.Archetypes</code>. An item can
+therefore be correctly gated and present in <code>RewardKeys</code>, yet remain
+absent from the research description when it was injected into a different or
+temporary catalog. Register the definition idempotently in the exact archetype
+catalog owned by the live config bundle before research finalization, and
+validate that the bundle can resolve the reward key.
+
+Apply the same rule to guard flags. A process-wide <code>alreadyInjected</code>
+boolean is unsafe when the game may construct more than one catalog or config
+bundle. Make initialization idempotent per target instance (or derive it from
+the target's contents), so loading a temporary bundle cannot cause the live
+bundle to be skipped later.
+
+<code>RitualSiteConfig.NotShownInResearchUI</code> controls presentation of the
+derived ritual-site reward. It does not repair an archetype reward key that the
+live bundle cannot resolve. Decide separately whether research should show the
+building's archetype card, the ritual-site reward, or both.
 
 Test research in all three states:
 
@@ -451,8 +465,9 @@ At startup, log:
 - failures with the definition or method key involved.
 
 Good milestone logs made it possible to prove that the Dark Arts reward key had
-been added even while the UI failed to display it. That narrowed the problem to
-research presentation/finalization rather than registration.
+been added even while the UI failed to display it. Inspecting the UI lookup path
+then showed that the key was resolved through the live config bundle rather than
+the static catalog. Log and validate both the mutation and the catalog lookup.
 
 Useful read-only investigation techniques include:
 
@@ -482,7 +497,7 @@ silently become ineffective after an update when overloads change.
 | Artifact picker says “No Relics” | picker mode or candidate filtering, not necessarily inventory |
 | Ritual deletes its target | native delivered-input consumption |
 | Unclickable model appears near entrance | live procedural template left at resource origin |
-| Research gates item but does not show reward | reward finalization or <code>NotShownInResearchUI</code> |
+| Research gates item but does not show reward | live bundle archetype lookup, reward finalization, or ritual-site presentation flag |
 
 ## 15. Use an incremental in-game test ladder
 
@@ -621,4 +636,3 @@ working examples:
 - [Default room treatment](../src/SacrificialAltar/Content/Wallpaper/dark_temple.yaml)
 - [Timed school-wide status](../src/SacrificialAltar/Content/CharacterStatus/sacrificed_mage_grief.yaml)
 - [Release packaging](../scripts/package.ps1)
-

@@ -19,6 +19,13 @@ by Sparkypants Studios or Klei Entertainment.
 
 The modules do not depend on one another. Install any combination of them.
 
+## Modding documentation
+
+The [Practical Mind Over Magic Modding Guide](docs/MODDING-GUIDE.md) collects
+the implementation patterns, debugging lessons, failure modes, testing
+checklists, packaging practices, and save-safety guidance learned while
+developing these mods.
+
 ## Requirements
 
 - Mind Over Magic for Windows on Steam
@@ -35,7 +42,8 @@ new version of these plugins.
 1. Install BepInEx 5 into the Mind Over Magic directory. This is the directory
    containing `mindovermagic.exe`.
 2. Start the game once and close it, allowing BepInEx to create its folders.
-3. Download `MindOverMagic-Mods-v1.0.0.zip` from the latest GitHub release.
+3. Download the newest <code>MindOverMagic-Mods-v&lt;version&gt;.zip</code>
+   from the latest GitHub release.
 4. Extract the ZIP into the Mind Over Magic directory. Merge the included
    `BepInEx` folder when prompted.
 5. Delete any module folders you do not want from `BepInEx\plugins`.

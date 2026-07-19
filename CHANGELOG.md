@@ -1,5 +1,17 @@
 # Changelog
 
+## Bundle v1.1.5 - 2026-07-19
+
+### Sacrificial Altar 1.3.5
+
+- Resolve every programmatically assigned research reference through its live
+  catalog so Dark Arts, Tier II, Research Bench, Codex tags, and the altar carry
+  valid numeric IDs instead of key-only, zero-UID references.
+- Attach Sacrificial Rites to the native finalized research graph so it appears
+  as a searchable child of Dark Arts.
+- Validate the Dark Arts-to-Sacrificial Rites graph edge immediately after
+  research finalization and report a specific error if it ever regresses.
+
 ## Bundle v1.1.4 - 2026-07-19
 
 ### Sacrificial Altar 1.3.4

@@ -342,6 +342,24 @@ deduplication, compare the stored definitions' string keys, use a verified
 string-key lookup API, or retain the fully assigned ID written by
 <code>DefinitionCatalog.Add</code>.
 
+The same warning applies to every cross-reference inside a definition, not only
+to the definition's own ID. Programmatic research entries must resolve their
+prerequisite techs, research stations, tier, Codex tags, reward archetypes, and
+other referenced definitions through the corresponding live catalog's
+<code>TryGetDefId(string, out ...)</code>. The native YAML-loading pipeline turns
+key-only references into full IDs; directly constructed objects bypass that
+step. A key-only prerequisite may look correct in logs while failing dictionary
+equality against the prerequisite's real ID, and a key-only research-station ID
+causes the UI to filter the topic out before drawing it.
+
+Understand how the consumer discovers content. The research screen does not
+draw every catalog entry. It first selects roots researched at the resolved
+Research Bench and unlocked by the Tech Tree root, then recursively walks the
+catalog's finalized prerequisite-to-child lookup. Validate custom research only
+after <code>ResearchTechCatalog.Finalize</code> by confirming that the resolved
+prerequisite ID maps to the custom definition. Catalog membership alone is not
+proof that a node is reachable or visible.
+
 <code>RitualSiteConfig.NotShownInResearchUI</code> controls presentation of the
 derived ritual-site reward. It does not repair an archetype reward key that the
 live bundle cannot resolve. Decide separately whether research should show the

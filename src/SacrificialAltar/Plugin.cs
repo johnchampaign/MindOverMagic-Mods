@@ -16,7 +16,7 @@ public sealed class Plugin : BaseUnityPlugin
 {
     public const string PluginGuid = "ca.johnc.mindovermagic.sacrificialaltar";
     public const string PluginName = "Sacrificial Altar";
-    public const string PluginVersion = "1.3.4";
+    public const string PluginVersion = "1.3.5";
     internal static ManualLogSource ModLog { get; private set; } = null!;
 
     private void Awake()
@@ -397,7 +397,6 @@ internal static class WallpaperCatalogLoadPatch
             ConfigData.Instance = __instance.Archetypes;
             DefinitionCatalog<Archetype>.Instance = __instance.Archetypes;
 
-            EnsureSacrificialRitesResearch(__instance);
             ArchetypeCatalogLoadPatch.EnsureAltarPresent(
                 __instance.Archetypes, YamlParserType.YamlDotNet);
             ConfigData.Instance = __instance.Archetypes;
@@ -409,6 +408,11 @@ internal static class WallpaperCatalogLoadPatch
                 throw new InvalidOperationException(
                     "The live config bundle could not resolve the Sacrificial Altar archetype.");
             }
+
+            // Resolve the research definition only after the altar has been added.
+            // Programmatic DefId references need both their key and generated UID;
+            // the YAML loader normally supplies that resolution step for native data.
+            EnsureSacrificialRitesResearch(__instance);
 
             var modCatalog = new WallpaperCatalog();
             modCatalog.Load(ModContent.Root, YamlParserType.YamlDotNet);
@@ -444,11 +448,56 @@ internal static class WallpaperCatalogLoadPatch
 
     private static void EnsureSacrificialRitesResearch(ConfigBundle config)
     {
+        if (!config.ResearchTechCatalog.TryGetDefId("AdvancedDarkI", out var darkArtsId))
+        {
+            throw new InvalidOperationException("Could not resolve the Dark Arts research ID.");
+        }
+        if (!config.ResearchTierCatalog.TryGetDefId("Tier2", out var tier2Id))
+        {
+            throw new InvalidOperationException("Could not resolve the Tier II research ID.");
+        }
+        if (!config.Archetypes.TryGetDefId("ResearchBench", out var researchBenchId))
+        {
+            throw new InvalidOperationException("Could not resolve the Research Bench archetype ID.");
+        }
+        if (!config.Archetypes.TryGetDefId("SacrificialAltar", out var altarId))
+        {
+            throw new InvalidOperationException("Could not resolve the Sacrificial Altar archetype ID.");
+        }
+        if (!config.CodexTagCatalog.TryGetDefId("Research", out var researchTagId) ||
+            !config.CodexTagCatalog.TryGetDefId("ResearchTier2", out var tier2TagId))
+        {
+            throw new InvalidOperationException("Could not resolve the research Codex tag IDs.");
+        }
+
         var researchId = new DefId<ResearchTechDefinition> { Key = "SacrificialRites" };
         foreach (var existingDefinition in config.ResearchTechCatalog.AllDefinitions())
         {
             if (existingDefinition.Id.Key == researchId.Key)
             {
+                // Hot reloads and multiple bundle passes may encounter an existing
+                // definition. Normalize every cross-reference because a key-only
+                // DefId has UID zero and will not participate in the native graph.
+                existingDefinition.ResearchTier = tier2Id;
+                existingDefinition.UnlockKeys = new List<DefId<ResearchTechDefinition>>
+                {
+                    darkArtsId
+                };
+                existingDefinition.ResearchedAt = new List<DefId<Archetype>>
+                {
+                    researchBenchId
+                };
+                existingDefinition.Codex ??= new CodexDescription();
+                existingDefinition.Codex.Tags = new HashSet<DefId<CodexTagDefinition>>
+                {
+                    researchTagId,
+                    tier2TagId
+                };
+                existingDefinition.Reward ??= new ResearchTechDefinition.UnlockReward();
+                existingDefinition.Reward.RewardKeys = new List<DefId<Archetype>>
+                {
+                    altarId
+                };
                 DefinitionCatalog<ResearchTechDefinition>.Instance =
                     config.ResearchTechCatalog;
                 return;
@@ -462,18 +511,18 @@ internal static class WallpaperCatalogLoadPatch
             {
                 Tags = new HashSet<DefId<CodexTagDefinition>>
                 {
-                    new() { Key = "Research" },
-                    new() { Key = "ResearchTier2" }
+                    researchTagId,
+                    tier2TagId
                 }
             },
-            ResearchTier = new DefId<ResearchTierDefinition> { Key = "Tier2" },
+            ResearchTier = tier2Id,
             UnlockKeys = new List<DefId<ResearchTechDefinition>>
             {
-                new() { Key = "AdvancedDarkI" }
+                darkArtsId
             },
             ResearchedAt = new List<DefId<Archetype>>
             {
-                new() { Key = "ResearchBench" }
+                researchBenchId
             },
             CastsRequired = 3000,
             LayoutLocation = new ResearchTechLayoutLocation
@@ -500,7 +549,7 @@ internal static class WallpaperCatalogLoadPatch
             {
                 RewardKeys = new List<DefId<Archetype>>
                 {
-                    new() { Key = "SacrificialAltar" }
+                    altarId
                 },
                 RewardRecipes = new List<DefId<RecipeDefinition>>(),
                 RewardWallpapers = new List<DefId<WallpaperDefinition>>(),
@@ -531,7 +580,45 @@ internal static class WallpaperCatalogLoadPatch
         }
 
         Plugin.ModLog.LogInfo(
-            "Injected Sacrificial Rites into the config bundle before research finalization.");
+            "Injected Sacrificial Rites with fully resolved prerequisite, station, tier, " +
+            "Codex-tag, and altar IDs before research finalization.");
+    }
+}
+
+[HarmonyPatch(typeof(ResearchTechCatalog), nameof(ResearchTechCatalog.Finalize))]
+internal static class SacrificialRitesGraphValidationPatch
+{
+    [HarmonyPostfix]
+    private static void Validate(ResearchTechCatalog __instance)
+    {
+        if (!__instance.TryGetDefId("AdvancedDarkI", out var darkArtsId) ||
+            !__instance.TryGetDefId("SacrificialRites", out var ritesId))
+        {
+            Plugin.ModLog.LogError(
+                "Sacrificial Rites research IDs were missing after catalog finalization.");
+            return;
+        }
+
+        if (!__instance.UnlockToKeyLookup.TryGetValue(darkArtsId, out var children))
+        {
+            Plugin.ModLog.LogError(
+                "Sacrificial Rites was not attached to Dark Arts in the finalized research graph.");
+            return;
+        }
+
+        foreach (var child in children)
+        {
+            if (child.Id.Equals(ritesId))
+            {
+                Plugin.ModLog.LogInfo(
+                    "Validated Sacrificial Rites as a visible child of Dark Arts in the " +
+                    "finalized research graph.");
+                return;
+            }
+        }
+
+        Plugin.ModLog.LogError(
+            "Sacrificial Rites was absent from Dark Arts' finalized child list.");
     }
 }
 

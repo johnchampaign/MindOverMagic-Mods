@@ -15,7 +15,7 @@ by Sparkypants Studios or Klei Entertainment.
 | --- | ---: | --- |
 | Character Level Relics | 1.1.0 | Bases manifested relic level caps on the mage's level and completed trials instead of wand tier. |
 | Faction Balance | 1.0.0 | Reduces the Raven Cult's universal advantages and gives the Shattered the strongest Power growth. |
-| Sacrificial Altar | 1.3.4 | Adds a buildable altar, dedicated Sacrificial Rites research, sacrificial relic-upgrade ritual, Dark Temple room, custom model, and room treatment. |
+| Sacrificial Altar | 1.3.5 | Adds a buildable altar, dedicated Sacrificial Rites research, sacrificial relic-upgrade ritual, Dark Temple room, custom model, and room treatment. |
 
 The modules do not depend on one another. Install any combination of them.
 

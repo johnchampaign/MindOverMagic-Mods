@@ -265,6 +265,21 @@ bundle. Make initialization idempotent per target instance (or derive it from
 the target's contents), so loading a temporary bundle cannot cause the live
 bundle to be skipped later.
 
+Constructing any <code>DefinitionCatalog&lt;T&gt;</code> changes that generic
+catalog's static <code>Instance</code> in its constructor. Temporary catalogs
+used to load mod YAML can therefore redirect later <code>DefId.GetDefinition()</code>
+calls even when a config bundle contains the correct data. Restore the intended
+static instance after temporary loading, and remember that a screen may receive
+one definition object while re-resolving the same ID through another catalog.
+
+For stubborn UI integration, validate at the consumer boundary. Immediately
+before the selected research widget builds its reward cache, compare and
+idempotently synchronize the screen definition, the static-catalog definition,
+and the live-bundle definition. Log reference identity, reward counts, and
+whether the exact catalog used by the UI resolves the custom archetype. A
+successful load-time message is not proof that a later UI consumer sees the
+same object graph.
+
 <code>RitualSiteConfig.NotShownInResearchUI</code> controls presentation of the
 derived ritual-site reward. It does not repair an archetype reward key that the
 live bundle cannot resolve. Decide separately whether research should show the

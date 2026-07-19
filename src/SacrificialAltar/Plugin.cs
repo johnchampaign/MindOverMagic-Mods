@@ -16,7 +16,7 @@ public sealed class Plugin : BaseUnityPlugin
 {
     public const string PluginGuid = "ca.johnc.mindovermagic.sacrificialaltar";
     public const string PluginName = "Sacrificial Altar";
-    public const string PluginVersion = "1.2.4";
+    public const string PluginVersion = "1.2.5";
     internal static ManualLogSource ModLog { get; private set; } = null!;
 
     private void Awake()
@@ -445,6 +445,80 @@ internal static class WallpaperCatalogLoadPatch
             Key = "SacrificialAltar"
         });
         Plugin.ModLog.LogInfo("Added Sacrificial Altar as a Dark Arts research reward.");
+    }
+}
+
+[HarmonyPatch(typeof(View.ResearchNew.ResearchSelectedWidget), "Update")]
+internal static class DarkArtsResearchPresentationPatch
+{
+    private const string DarkArtsKey = "AdvancedDarkI";
+    private const string AltarKey = "SacrificialAltar";
+    private static bool _logged;
+
+    [HarmonyPrefix]
+    private static void SynchronizeReward(ResearchTechDefinition __0)
+    {
+        if (__0?.Id.Key != DarkArtsKey)
+        {
+            return;
+        }
+
+        var screenDefinition = __0;
+        EnsureRewardKey(screenDefinition);
+
+        ResearchTechDefinition? staticDefinition = null;
+        var staticCatalog = DefinitionCatalog<ResearchTechDefinition>.Instance;
+        if (staticCatalog != null &&
+            staticCatalog.TryGetDefinition(screenDefinition.Id, out var resolvedStaticDefinition))
+        {
+            staticDefinition = resolvedStaticDefinition;
+            EnsureRewardKey(staticDefinition);
+        }
+
+        ResearchTechDefinition? bundleDefinition = null;
+        var bundle = IConfigBundleProvider.Instance?.ConfigBundle;
+        var bundleHasAltar = false;
+        if (bundle != null)
+        {
+            if (bundle.ResearchTechCatalog.TryGetDefinition(
+                    screenDefinition.Id, out var resolvedBundleDefinition))
+            {
+                bundleDefinition = resolvedBundleDefinition;
+                EnsureRewardKey(bundleDefinition);
+            }
+
+            bundleHasAltar = bundle.Archetypes.TryGetArchetypeFromStringKey(
+                AltarKey, out _);
+        }
+
+        if (!_logged)
+        {
+            _logged = true;
+            Plugin.ModLog.LogInfo(
+                "Synchronized the Dark Arts altar reward at the research UI boundary: " +
+                $"screen/static same={ReferenceEquals(screenDefinition, staticDefinition)}, " +
+                $"screen/bundle same={ReferenceEquals(screenDefinition, bundleDefinition)}, " +
+                $"bundle resolves altar={bundleHasAltar}, " +
+                $"screen rewards={screenDefinition.Reward?.RewardKeys?.Count ?? 0}, " +
+                $"static rewards={staticDefinition?.Reward?.RewardKeys?.Count ?? 0}, " +
+                $"bundle rewards={bundleDefinition?.Reward?.RewardKeys?.Count ?? 0}.");
+        }
+    }
+
+    private static void EnsureRewardKey(ResearchTechDefinition definition)
+    {
+        definition.Reward ??= new ResearchTechDefinition.UnlockReward();
+        definition.Reward.RewardKeys ??= new List<DefId<Archetype>>();
+
+        foreach (var rewardKey in definition.Reward.RewardKeys)
+        {
+            if (rewardKey.Key == AltarKey)
+            {
+                return;
+            }
+        }
+
+        definition.Reward.RewardKeys.Add(new DefId<Archetype> { Key = AltarKey });
     }
 }
 

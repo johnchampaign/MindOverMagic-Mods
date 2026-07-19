@@ -1,5 +1,14 @@
 # Changelog
 
+## Bundle v1.0.3 - 2026-07-19
+
+### Sacrificial Altar 1.2.5
+
+- Synchronize the altar reward across the research definition passed to the
+  selected-topic UI, the static definition catalog, and the live config bundle.
+- Log object identity, reward counts, and final archetype resolution at the
+  research UI boundary so presentation is verified where it is actually used.
+
 ## Bundle v1.0.2 - 2026-07-19
 
 ### Sacrificial Altar 1.2.4

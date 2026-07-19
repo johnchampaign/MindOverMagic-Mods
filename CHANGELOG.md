@@ -1,5 +1,11 @@
 # Changelog
 
+## Bundle v1.0.1 - 2026-07-19
+
+### Sacrificial Altar 1.2.3
+
+- Show the Sacrificial Altar in the Dark Arts research topic's unlock rewards.
+
 ## Bundle v1.0.0 - 2026-07-19
 
 First public bundle release.
@@ -30,4 +36,3 @@ First public bundle release.
   dark room treatment.
 - Prevent the procedural prefab template from appearing near the entrance.
 - Hide the altar from the build menu until Dark Arts is completed.
-

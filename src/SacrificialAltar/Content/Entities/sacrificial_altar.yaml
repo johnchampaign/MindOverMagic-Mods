@@ -55,7 +55,7 @@
     StartRitualAudioEvent: Play_Activate_RitualSacrifice
     StopRitualAudioEvent: Play_Exit_RitualSacrifice
     WindowAmbienceStateValue: RITUAL_ORACULUM_WINDOW
-    NotShownInResearchUI: true
+    NotShownInResearchUI: false
     AppliedStatusAllMages: { Key: SacrificedMageGrief }
     ButtonName:
       Text: Sacrifice for Relic

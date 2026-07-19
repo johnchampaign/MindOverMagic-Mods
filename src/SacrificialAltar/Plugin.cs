@@ -16,7 +16,7 @@ public sealed class Plugin : BaseUnityPlugin
 {
     public const string PluginGuid = "ca.johnc.mindovermagic.sacrificialaltar";
     public const string PluginName = "Sacrificial Altar";
-    public const string PluginVersion = "1.2.2";
+    public const string PluginVersion = "1.2.3";
     internal static ManualLogSource ModLog { get; private set; } = null!;
 
     private void Awake()

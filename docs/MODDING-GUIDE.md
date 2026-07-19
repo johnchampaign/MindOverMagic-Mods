@@ -360,6 +360,16 @@ after <code>ResearchTechCatalog.Finalize</code> by confirming that the resolved
 prerequisite ID maps to the custom definition. Catalog membership alone is not
 proof that a node is reachable or visible.
 
+Research tier backgrounds are dynamic rather than fixed artwork. The screen
+derives each vertical tier band's extent from the X coordinates of every topic
+assigned to that tier, then places separators between adjacent extents. Before
+choosing a custom topic's location, inspect nearby native definitions and reuse
+the established X-column for the intended tier. Placing a Tier III topic in a
+Tier II column can move a separator through every native topic in that column,
+even when the custom topic itself otherwise renders correctly. Also distinguish
+catalog tier keys from displayed numbering: in the current data, `Tier2` is
+presented to players with the Roman numeral III.
+
 <code>RitualSiteConfig.NotShownInResearchUI</code> controls presentation of the
 derived ritual-site reward. It does not repair an archetype reward key that the
 live bundle cannot resolve. Decide separately whether research should show the

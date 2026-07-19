@@ -15,7 +15,7 @@ by Sparkypants Studios or Klei Entertainment.
 | --- | ---: | --- |
 | Character Level Relics | 1.1.0 | Bases manifested relic level caps on the mage's level and completed trials instead of wand tier. |
 | Faction Balance | 1.0.0 | Reduces the Raven Cult's universal advantages and gives the Shattered the strongest Power growth. |
-| Sacrificial Altar | 1.3.5 | Adds a buildable altar, dedicated Sacrificial Rites research, sacrificial relic-upgrade ritual, Dark Temple room, custom model, and room treatment. |
+| Sacrificial Altar | 1.3.6 | Adds a buildable altar, dedicated Sacrificial Rites research, sacrificial relic-upgrade ritual, Dark Temple room, custom model, and room treatment. |
 
 The modules do not depend on one another. Install any combination of them.
 
@@ -125,7 +125,7 @@ Changes to that configuration require a game restart.
 
 ## Sacrificial Altar
 
-The Sacrificial Altar is unlocked by the dedicated **Sacrificial Rites** Tier II
+The Sacrificial Altar is unlocked by the dedicated **Sacrificial Rites** Tier III
 research topic. Sacrificial Rites requires **Dark Arts**, costs 3,000 research,
 and makes the altar available under **Furniture > Rituals & Relics** when
 completed.

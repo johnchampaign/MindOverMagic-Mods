@@ -16,7 +16,7 @@ public sealed class Plugin : BaseUnityPlugin
 {
     public const string PluginGuid = "ca.johnc.mindovermagic.sacrificialaltar";
     public const string PluginName = "Sacrificial Altar";
-    public const string PluginVersion = "1.3.5";
+    public const string PluginVersion = "1.3.6";
     internal static ManualLogSource ModLog { get; private set; } = null!;
 
     private void Awake()
@@ -498,6 +498,13 @@ internal static class WallpaperCatalogLoadPatch
                 {
                     altarId
                 };
+                existingDefinition.LayoutLocation = new ResearchTechLayoutLocation
+                {
+                    X = 7352,
+                    Y = -17560,
+                    WidgetHeight = 320,
+                    WidgetWidth = 820
+                };
                 DefinitionCatalog<ResearchTechDefinition>.Instance =
                     config.ResearchTechCatalog;
                 return;
@@ -527,7 +534,10 @@ internal static class WallpaperCatalogLoadPatch
             CastsRequired = 3000,
             LayoutLocation = new ResearchTechLayoutLocation
             {
-                X = 6260,
+                // Tier2 is displayed as Tier III in the research UI. Keep this
+                // node in the native Tier III X-column (alongside AdvancedDarkIIA)
+                // so it does not shift the dynamically calculated band boundary.
+                X = 7352,
                 Y = -17560,
                 WidgetHeight = 320,
                 WidgetWidth = 820
@@ -610,9 +620,17 @@ internal static class SacrificialRitesGraphValidationPatch
         {
             if (child.Id.Equals(ritesId))
             {
+                if (child.LayoutLocation.X != 7352)
+                {
+                    Plugin.ModLog.LogError(
+                        $"Sacrificial Rites finalized at unexpected X={child.LayoutLocation.X}; " +
+                        "the Tier III research band may be distorted.");
+                    return;
+                }
+
                 Plugin.ModLog.LogInfo(
                     "Validated Sacrificial Rites as a visible child of Dark Arts in the " +
-                    "finalized research graph.");
+                    "finalized research graph at the native Tier III X-coordinate 7352.");
                 return;
             }
         }

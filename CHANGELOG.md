@@ -1,5 +1,15 @@
 # Changelog
 
+## Bundle v1.1.6 - 2026-07-19
+
+### Sacrificial Altar 1.3.6
+
+- Move Sacrificial Rites into the native Tier III X-column directly below
+  Darker and Darker, preventing the research screen's dynamic tier boundaries
+  from cutting through unrelated topics.
+- Correct the user-facing documentation to call Sacrificial Rites Tier III,
+  matching the Roman numeral displayed by the game.
+
 ## Bundle v1.1.5 - 2026-07-19
 
 ### Sacrificial Altar 1.3.5
@@ -33,7 +43,7 @@
 
 ### Sacrificial Altar 1.3.0
 
-- Add a dedicated Tier II **Sacrificial Rites** research topic requiring Dark
+- Add a dedicated Tier III **Sacrificial Rites** research topic requiring Dark
   Arts and costing 3,000 research.
 - Make Sacrificial Rites solely responsible for unlocking the altar instead of
   appending a clipped third reward card to the fixed-width Dark Arts reward row.

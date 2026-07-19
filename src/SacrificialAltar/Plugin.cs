@@ -16,13 +16,27 @@ public sealed class Plugin : BaseUnityPlugin
 {
     public const string PluginGuid = "ca.johnc.mindovermagic.sacrificialaltar";
     public const string PluginName = "Sacrificial Altar";
-    public const string PluginVersion = "1.3.0";
+    public const string PluginVersion = "1.3.4";
     internal static ManualLogSource ModLog { get; private set; } = null!;
 
     private void Awake()
     {
         ModLog = Logger;
-        new Harmony(PluginGuid).PatchAll();
+        var harmony = new Harmony(PluginGuid);
+        try
+        {
+            harmony.PatchAll();
+        }
+        catch (Exception exception)
+        {
+            // PatchAll can leave classes patched before a later invalid target
+            // throws. Roll everything back so the base game can still start.
+            harmony.UnpatchSelf();
+            Logger.LogError(
+                $"{PluginName} could not initialize and was safely disabled: {exception}");
+            enabled = false;
+            return;
+        }
         Logger.LogInfo($"{PluginName} {PluginVersion} loaded.");
     }
 
@@ -358,48 +372,6 @@ internal static class RoomCatalogLoadPatch
     }
 }
 
-[HarmonyPatch(typeof(ResearchTechCatalog), nameof(ResearchTechCatalog.Load))]
-internal static class ResearchCatalogLoadPatch
-{
-    [System.ThreadStatic] private static bool _loadingMod;
-
-    [HarmonyPostfix]
-    private static void Register(ResearchTechCatalog __instance, YamlParserType __1)
-    {
-        var researchId = new DefId<ResearchTechDefinition> { Key = "SacrificialRites" };
-        if (_loadingMod || __instance.TryGetDefinition(researchId, out _))
-        {
-            return;
-        }
-
-        _loadingMod = true;
-        try
-        {
-            var modCatalog = new ResearchTechCatalog();
-            modCatalog.Load(ModContent.Root, __1);
-            foreach (var definition in modCatalog.AllDefinitions())
-            {
-                __instance.Add(definition);
-            }
-
-            // Constructing the temporary catalog redirects the generic static
-            // Instance. Restore the game catalog that received the definitions.
-            DefinitionCatalog<ResearchTechDefinition>.Instance = __instance;
-            Plugin.ModLog.LogInfo(
-                "Injected the Sacrificial Rites research topic before research finalization.");
-        }
-        catch (Exception exception)
-        {
-            Plugin.ModLog.LogError(
-                $"Failed to inject the Sacrificial Rites research topic: {exception}");
-        }
-        finally
-        {
-            _loadingMod = false;
-        }
-    }
-}
-
 [HarmonyPatch(typeof(ConfigBundle), "PostLoad")]
 internal static class WallpaperCatalogLoadPatch
 {
@@ -422,6 +394,10 @@ internal static class WallpaperCatalogLoadPatch
             // owned by IConfigBundleProvider.ConfigBundle, not necessarily through
             // whichever ConfigData instance happened to load first. Ensure this exact
             // live catalog owns the altar before ResearchTechCatalog.Finalize runs.
+            ConfigData.Instance = __instance.Archetypes;
+            DefinitionCatalog<Archetype>.Instance = __instance.Archetypes;
+
+            EnsureSacrificialRitesResearch(__instance);
             ArchetypeCatalogLoadPatch.EnsureAltarPresent(
                 __instance.Archetypes, YamlParserType.YamlDotNet);
             ConfigData.Instance = __instance.Archetypes;
@@ -450,10 +426,113 @@ internal static class WallpaperCatalogLoadPatch
         catch (Exception exception)
         {
             Plugin.ModLog.LogError(
-                $"Failed to inject the Dark Temple wallpaper: {exception}");
+                $"Failed to inject Sacrificial Altar config-bundle content: {exception}");
+        }
+        finally
+        {
+            // Temporary definition catalogs set their generic static Instance in
+            // their constructors. Always return every catalog touched here to the
+            // live bundle, including when an earlier injection step throws.
+            ConfigData.Instance = __instance.Archetypes;
+            DefinitionCatalog<Archetype>.Instance = __instance.Archetypes;
+            DefinitionCatalog<ResearchTechDefinition>.Instance =
+                __instance.ResearchTechCatalog;
+            DefinitionCatalog<WallpaperDefinition>.Instance =
+                __instance.WallpaperCatalog;
         }
     }
 
+    private static void EnsureSacrificialRitesResearch(ConfigBundle config)
+    {
+        var researchId = new DefId<ResearchTechDefinition> { Key = "SacrificialRites" };
+        foreach (var existingDefinition in config.ResearchTechCatalog.AllDefinitions())
+        {
+            if (existingDefinition.Id.Key == researchId.Key)
+            {
+                DefinitionCatalog<ResearchTechDefinition>.Instance =
+                    config.ResearchTechCatalog;
+                return;
+            }
+        }
+
+        var definition = new ResearchTechDefinition
+        {
+            Id = researchId,
+            Codex = new CodexDescription
+            {
+                Tags = new HashSet<DefId<CodexTagDefinition>>
+                {
+                    new() { Key = "Research" },
+                    new() { Key = "ResearchTier2" }
+                }
+            },
+            ResearchTier = new DefId<ResearchTierDefinition> { Key = "Tier2" },
+            UnlockKeys = new List<DefId<ResearchTechDefinition>>
+            {
+                new() { Key = "AdvancedDarkI" }
+            },
+            ResearchedAt = new List<DefId<Archetype>>
+            {
+                new() { Key = "ResearchBench" }
+            },
+            CastsRequired = 3000,
+            LayoutLocation = new ResearchTechLayoutLocation
+            {
+                X = 6260,
+                Y = -17560,
+                WidgetHeight = 320,
+                WidgetWidth = 820
+            },
+            SubTechs = new List<DefId<ResearchTechDefinition>>(),
+            Category = "Teaching",
+            DisplayName = new LocalizedText
+            {
+                Text = "Sacrificial Rites",
+                Key = "Mod.SacrificialRites.DisplayName"
+            },
+            FlavorText = new LocalizedText
+            {
+                Text = "Some knowledge demands more than study.",
+                Key = "Mod.SacrificialRites.FlavorText"
+            },
+            AdditionalSearchKeys = new List<LocalizedText>(),
+            Reward = new ResearchTechDefinition.UnlockReward
+            {
+                RewardKeys = new List<DefId<Archetype>>
+                {
+                    new() { Key = "SacrificialAltar" }
+                },
+                RewardRecipes = new List<DefId<RecipeDefinition>>(),
+                RewardWallpapers = new List<DefId<WallpaperDefinition>>(),
+                ResearchKeys = new List<DefId<ResearchTechDefinition>>(),
+                RitualSiteConfigs = new List<RitualSiteConfig>(),
+                GearSlots = new Dictionary<GearType, int>()
+            }
+        };
+
+        config.ResearchTechCatalog.Add(definition);
+        DefinitionCatalog<ResearchTechDefinition>.Instance =
+            config.ResearchTechCatalog;
+
+        var resolves = false;
+        foreach (var storedDefinition in config.ResearchTechCatalog.AllDefinitions())
+        {
+            if (storedDefinition.Id.Key == researchId.Key)
+            {
+                resolves = true;
+                break;
+            }
+        }
+
+        if (!resolves)
+        {
+            throw new InvalidOperationException(
+                "The live config bundle could not resolve Sacrificial Rites after injection.");
+        }
+
+        Plugin.ModLog.LogInfo(
+            "Injected Sacrificial Rites into the config bundle before research finalization.");
+    }
 }
 
 [HarmonyPatch(typeof(BuildableUtils), nameof(BuildableUtils.GetBuildableArchetypes))]
@@ -477,6 +556,7 @@ internal static class BuildableArchetypePatch
             Plugin.ModLog.LogInfo("Added Sacrificial Altar to the native buildable-archetype result.");
         }
     }
+
 }
 
 [HarmonyPatch(typeof(View.HUDPanel_BuildPalette_Selection), "Update")]

@@ -295,6 +295,53 @@ prerequisite keys, research stations, cost, reward, and an unoccupied layout
 location. Gate the build menu against the custom research ID so the visible
 topic and actual unlock condition cannot drift apart.
 
+Do not target an inherited method with an attribute that asks Harmony to find
+that method as declared on the derived type. For example,
+<code>[HarmonyPatch(typeof(ResearchTechCatalog), nameof(ResearchTechCatalog.Load))]</code>
+fails when <code>Load</code> is inherited from
+<code>DefinitionCatalog&lt;ResearchTechDefinition&gt;</code>. Harmony reports an
+undefined target method, and <code>PatchAll</code> throws. Patch the verified
+declaring method with an exact signature, supply an explicit
+<code>TargetMethod</code>, or use a different verified lifecycle hook such as
+<code>ConfigBundle.PostLoad</code> before finalization.
+
+Treat <code>PatchAll</code> as a transaction even though Harmony does not. If
+one patch class fails, earlier classes may remain active. Catch initialization
+failure, call <code>UnpatchSelf</code>, log that the plugin was disabled, and
+return before loading custom content. A partially patched content mod can leave
+catalog statics and bundle data inconsistent and prevent the game from reaching
+its main menu.
+
+Apply the same transaction discipline inside bundle injection. Restore every
+generic catalog <code>Instance</code> touched by temporary loading in a
+<code>finally</code> block, not only on the successful path. A caught content
+exception is not safe if it leaves <code>DefId.GetDefinition()</code> pointing
+at a temporary, incomplete catalog; native post-load code may then fail far
+away in ingredient or recipe indexing.
+
+Do not assume every definition catalog will scan an arbitrary mod content root
+the same way. Verify discovery in the runtime log. If a small, isolated custom
+definition is not discovered and its field schema is known, constructing it
+directly in the live catalog can be safer than creating another temporary
+catalog. Initialize every list and nested reward collection that native
+finalization may enumerate, add the definition before finalization, restore the
+live static instance, and immediately verify the new ID resolves.
+
+For programmatically constructed definitions, assign the definition's own key
+field (for research, <code>ResearchTechDefinition.Id</code>) before calling
+<code>DefinitionCatalog.Add</code>. Passing the intended ID only to a later
+lookup is insufficient: <code>Add</code> calls <code>GetKey()</code> and hashes
+that string immediately, so an unset field fails with an argument-null error.
+
+A key-only <code>DefId&lt;T&gt;</code> is not automatically valid for every lookup.
+<code>DefinitionCatalog.TryGetDefinition(DefId&lt;T&gt;)</code> reads the ID's
+numeric UID directly; it does not hash the populated <code>Key</code> first. A
+new <code>DefId</code> with only <code>Key</code> set therefore has UID zero and
+can falsely report that an inserted definition is missing. For load-time
+deduplication, compare the stored definitions' string keys, use a verified
+string-key lookup API, or retain the fully assigned ID written by
+<code>DefinitionCatalog.Add</code>.
+
 <code>RitualSiteConfig.NotShownInResearchUI</code> controls presentation of the
 derived ritual-site reward. It does not repair an archetype reward key that the
 live bundle cannot resolve. Decide separately whether research should show the

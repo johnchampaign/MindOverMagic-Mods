@@ -1,5 +1,22 @@
 # Changelog
 
+## Bundle v1.1.4 - 2026-07-19
+
+### Sacrificial Altar 1.3.4
+
+- Fix the black startup screen caused by attempting to patch an inherited
+  research-catalog method as though it were declared on the derived catalog.
+- Inject Sacrificial Rites through the verified config-bundle pre-finalization
+  hook instead.
+- Construct the single Sacrificial Rites definition directly in the live
+  research catalog after the temporary catalog failed to discover mod YAML.
+- Restore every generic catalog static touched during bundle injection in a
+  `finally` block, including on failure, so base-game post-load remains valid.
+- Assign the custom research definition's ID before catalog insertion and
+  verify/deduplicate it by stored string key rather than a zero-UID `DefId`.
+- Roll back all Harmony patches and safely disable the plugin if any future
+  patch registration fails, preventing partially patched startup state.
+
 ## Bundle v1.1.0 - 2026-07-19
 
 ### Sacrificial Altar 1.3.0

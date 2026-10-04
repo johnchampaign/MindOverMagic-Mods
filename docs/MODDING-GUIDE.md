@@ -690,7 +690,22 @@ Never promise that removing a content mod is safe unless that exact migration
 has been tested. Back up saves before installation, updates that change
 definition structure, and uninstallation.
 
-## 18. Design for game updates
+## 18. Reimplement concepts, not opaque binaries
+
+A published feature list can inspire an independent mod, but it is not a
+technical specification. Do not download, decompile, run, copy from, or depend
+on another author's compiled plugin merely to recreate its advertised behavior.
+Write the implementation from the base game's own APIs and data, use a distinct
+plugin ID and public-facing name, and clearly describe the result as an
+independent interpretation.
+
+Treat any behavior whose exact magnitude is not documented as a design decision,
+not a fact to reverse engineer. Prefer conservative configurable defaults, and
+state what is implemented versus deferred. A partial release with only verified
+hooks is safer than a feature-complete claim backed by guessed patches, save
+edits, or base-game file replacement.
+
+## 19. Design for game updates
 
 Record the tested game build in the README and bug-report template. After a game
 update:
@@ -707,7 +722,7 @@ Prefer stable behavior-level patches over large copies of native logic. The
 more native work the game still performs, the less code must be reconciled
 after an update.
 
-## 19. A practical pre-release checklist
+## 20. A practical pre-release checklist
 
 - [ ] Plugin IDs and definition keys are unique.
 - [ ] Every patch is restricted to the intended entity or feature.

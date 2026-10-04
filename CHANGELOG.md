@@ -1,5 +1,18 @@
 # Changelog
 
+## Bundle v1.2.0 - 2026-10-03
+
+### Archmage Progression 0.1.0
+
+- Add a separately authored, source-available late-game magic progression
+  plugin. It does not reuse or inspect any third-party mod files.
+- Add configurable passive benefits based on Pyromancy, Geomancy, Divination,
+  Manipulation, Hydrokinesis, and Necromancy skill levels.
+- Keep all changes in a standalone BepInEx plugin; no base-game YAML is
+  modified.
+- Deliberately defer bespoke Adept/Archmage powers and Viturgy conviction
+  changes until their native hooks can be tested safely.
+
 ## Bundle v1.1.6 - 2026-07-19
 
 ### Sacrificial Altar 1.3.6

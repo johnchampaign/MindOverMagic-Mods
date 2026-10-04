@@ -1,8 +1,8 @@
 # Mind Over Magic Mods
 
-Three independent BepInEx 5 plugins for **Mind Over Magic**: character-level
-relic caps, a focused faction rebalance, and a fully playable Sacrificial Altar
-with its own ritual and Dark Temple room.
+Four independent BepInEx 5 plugins for **Mind Over Magic**: character-level
+relic caps, a focused faction rebalance, a fully playable Sacrificial Altar,
+and an independently authored late-game magic progression module.
 
 ![Sacrificial Altar](src/SacrificialAltar/Assets/sacrificial-altar.png)
 
@@ -16,6 +16,7 @@ by Sparkypants Studios or Klei Entertainment.
 | Character Level Relics | 1.1.0 | Bases manifested relic level caps on the mage's level and completed trials instead of wand tier. |
 | Faction Balance | 1.0.0 | Reduces the Raven Cult's universal advantages and gives the Shattered the strongest Power growth. |
 | Sacrificial Altar | 1.3.6 | Adds a buildable altar, dedicated Sacrificial Rites research, sacrificial relic-upgrade ritual, Dark Temple room, custom model, and room treatment. |
+| Archmage Progression | 0.1.0 | Gives each magic school a configurable, passive per-skill benefit without editing base-game files. |
 
 The modules do not depend on one another. Install any combination of them.
 
@@ -66,6 +67,8 @@ MindOverMagic/
                 ├── Entities/
                 ├── RoomTypes/
                 └── Wallpaper/
+        └── ArchmageProgression/
+            └── ArchmageProgression.dll
 ```
 
 On a successful launch, `BepInEx\LogOutput.log` contains a `loaded` line for
@@ -174,6 +177,37 @@ Sacrifices performed there gain the additional +1 relic-cap bonus. Qualifying
 rooms automatically receive the game's dark occult classroom-style walls,
 backwall, floor, and hallway treatment.
 
+## Archmage Progression (early access)
+
+Archmage Progression is an independent, source-available interpretation of
+late-game magic-school advancement. It does not reuse another mod's files,
+assembly, assets, or code, and it never writes to Mind Over Magic's YAML files.
+
+Version 0.1.0 implements the reliable passive foundation. Every point in these
+schools provides a configurable benefit:
+
+| School | Per-skill benefit | Default |
+| --- | --- | ---: |
+| Pyromancy | Maximum Mana | +5 |
+| Geomancy | Maximum HP | +5 |
+| Divination | Combat Damage Bonus | +2 |
+| Manipulation | Combat Dodge Chance | +2 |
+| Hydrokinesis | Combat regeneration | +1 |
+| Necromancy | Slower ordinary need decay | 2% |
+
+The current version intentionally does not claim to implement Viturgy's
+conviction feature, custom Adept/Archmage powers, or school-wide council
+effects. Those require separate validated game hooks and will be released only
+when each can be tested without save-file edits or base-file replacement.
+
+After its first launch, adjust the values in:
+
+```text
+BepInEx/config/ca.johnc.mindovermagic.archmageprogression.cfg
+```
+
+Restart the game after changing them.
+
 ## Updating
 
 Close the game, extract the new release over the old files, and allow existing
@@ -213,6 +247,7 @@ Install BepInEx into Mind Over Magic, then run:
 dotnet build src\CharacterLevelRelics\CharacterLevelRelics.csproj -c Release
 dotnet build src\FactionBalance\FactionBalance.csproj -c Release
 dotnet build src\SacrificialAltar\SacrificialAltar.csproj -c Release
+dotnet build src\ArchmageAscension\ArchmageAscension.csproj -c Release
 ```
 
 The projects assume Steam's default install location. Override it when needed:

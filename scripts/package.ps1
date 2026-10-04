@@ -1,5 +1,5 @@
 param(
-    [string]$BundleVersion = "1.1.6",
+    [string]$BundleVersion = "1.2.0",
     [string]$Configuration = "Release"
 )
 
@@ -18,7 +18,8 @@ if (-not $stageRoot.StartsWith($distRoot, [System.StringComparison]::OrdinalIgno
 $projects = @(
     "src\CharacterLevelRelics\CharacterLevelRelics.csproj",
     "src\FactionBalance\FactionBalance.csproj",
-    "src\SacrificialAltar\SacrificialAltar.csproj"
+    "src\SacrificialAltar\SacrificialAltar.csproj",
+    "src\ArchmageAscension\ArchmageAscension.csproj"
 )
 
 foreach ($project in $projects) {
@@ -40,11 +41,13 @@ $pluginsRoot = Join-Path $stageRoot "BepInEx\plugins"
 $characterRoot = Join-Path $pluginsRoot "CharacterLevelRelics"
 $factionRoot = Join-Path $pluginsRoot "FactionBalance"
 $altarRoot = Join-Path $pluginsRoot "SacrificialAltar"
-New-Item -ItemType Directory -Force -Path $characterRoot,$factionRoot,$altarRoot | Out-Null
+$archmageRoot = Join-Path $pluginsRoot "ArchmageProgression"
+New-Item -ItemType Directory -Force -Path $characterRoot,$factionRoot,$altarRoot,$archmageRoot | Out-Null
 
 Copy-Item -LiteralPath (Join-Path $repoRoot "src\CharacterLevelRelics\bin\$Configuration\netstandard2.1\CharacterLevelRelics.dll") -Destination $characterRoot
 Copy-Item -LiteralPath (Join-Path $repoRoot "src\FactionBalance\bin\$Configuration\netstandard2.1\FactionBalance.dll") -Destination $factionRoot
 Copy-Item -LiteralPath (Join-Path $repoRoot "src\SacrificialAltar\bin\$Configuration\netstandard2.1\SacrificialAltar.dll") -Destination $altarRoot
+Copy-Item -LiteralPath (Join-Path $repoRoot "src\ArchmageAscension\bin\$Configuration\netstandard2.1\ArchmageProgression.dll") -Destination $archmageRoot
 Copy-Item -LiteralPath (Join-Path $repoRoot "src\SacrificialAltar\Content") -Destination $altarRoot -Recurse
 
 Copy-Item -LiteralPath (Join-Path $repoRoot "README.md") -Destination $stageRoot

@@ -260,8 +260,17 @@ config.
 | --- | --- | --- |
 | Manipulation (Air) | Walks twice as fast | Also flies and passes through walls and floors |
 | Pyromancy (Fire) | Cooks twice as fast; starts every battle with Counterattack for two rounds | Same as Adept |
-| Necromancy (Dark) | None yet | Ordinary needs no longer decay |
-| Viturgy (Nature) | None yet | +5 Conviction target to every other mage in the school |
+| Geomancy (Earth) | Starts every battle with armour equal to 50% of Max HP | Also immune to harmful combat effects |
+| Hydrokinesis (Water) | Sheds harmful combat effects at the start of every round | Same as Adept |
+| Divination (Lightning) | None yet | Casts every spell without spending mana, in battle or at school |
+| Necromancy (Dark) | Regains 10% of spell damage dealt as HP, and 25 HP whenever a foe falls | Also, ordinary needs no longer decay |
+| Viturgy (Nature) | Every room gains +2 Luxury while the school has one; does not stack | Also +5 Conviction target to every other mage |
+
+"Harmful combat effects" uses the game's own definition: the non-beneficial
+effects that the Sanctified battle terrain cleanses, such as Stunned, Blinded,
+Burns, Fear, Soaked and Jolted. Ranks, fleeing, injuries and knock-outs are
+never touched. Earth armour reuses the game's "Girded for Battle" mechanism,
+and Dark's heal on a fallen foe is the game's own heal-on-enemy-death effect.
 
 Flight and the Fire powers reuse the game's own effects: the legacy "Ghostly
 Movement" pathing, the cooking-speed modifier, and the battle-start Counterattack
@@ -279,8 +288,15 @@ holds enough:
 
 | Archmage ranks | Power | Effect |
 | ---: | --- | --- |
+| 2 | Refining | The Earth, Air, Fire and Dark refineries hand back twice what they make |
 | 3 | Resolve | +10 Conviction target for every mage |
 | 5 | Scholarship | Teaching and learning are twice as fast |
+| 6 | Mending | Wounds (trauma injuries) close three times as fast |
+| 7 | Steady Minds | A mental break no longer leaves the mage At Death's Door |
+
+Steady Minds still grants the post-break Conviction recovery the game gives a
+broken mage on revival. It skips the revival trauma, because there is no
+knock-out to revive from.
 
 The school's founder, its ghost mage, carries an "Archmage Council (N)" badge.
 Hovering it lists the powers in force and the ones still to unlock. Resolve
@@ -294,10 +310,15 @@ school-wide effects; the per-skill bonuses still apply.
 
 ### Not yet implemented
 
-The remaining Adept and Archmage powers and Council powers are not built yet.
-They include Earth's armour and immunity, Lightning's free spells, Water's
-cleansing and resurrection ritual, Dark's lifesteal and reagents, Nature's
-Luxury bonus, and the Council's quest, refining, scouting and healing powers. Those require separate validated game hooks and will be released only
+These powers are not built yet:
+
+- Lightning Adept's battle-start mana vein.
+- Earth Archmage's Nexus Gateways.
+- Water Archmage's Waters of Return resurrection ritual.
+- Fire Archmage's scar and trauma removal.
+- Dark Archmage's twice-daily reagent bounty.
+- The Council's boss-rematch rewards, scouting reveals and quest-travel
+  shortening. Those require separate validated game hooks and will be released only
 when each can be tested without save-file edits or base-file replacement.
 
 ### Configuration

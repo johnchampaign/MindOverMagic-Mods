@@ -663,6 +663,30 @@ system's iterator <code>MoveNext</code> (resolve it with
 postfix. Skip <code>Mood</code>, which is target-style, and <code>Mana</code>,
 which is mirrored from the mana pool.
 
+### Defining "harmful" statuses safely
+
+<code>Beneficial: false</code> is the default, so it also covers need levels,
+location statuses, ranks and fleeing; blocking those breaks the game.
+<code>RemovedByPotion</code> is computed at load and only marks the three
+statuses a potion removes, including <code>Unconscious</code>. The game's own
+cleanse mechanism is <code>NegConditions</code>: the Sanctified battle terrain
+removes every status that lists <code>Terrain_Sanctified</code> there. Using
+"not beneficial and lists Terrain_Sanctified" gives about 50 enemy debuffs
+(Stunned, Blinded, Burns, Fear, Soaked) and nothing structural. A postfix on
+<code>CharacterStatusUtils.IsStatusAllowed</code> blocks them for immunity, and
+a postfix on <code>BattleUtils.OnRoundStart</code> can strip them each round.
+
+### Reading iterator state without hard-coded names
+
+Hooking a compiler-generated iterator such as
+<code>RoomDataUtils.ReCalculateAllRoomData</code> means reading its hoisted
+locals. Find them by field type rather than by names like
+<code>&lt;roomData&gt;5__2</code>, which change between builds, and build
+<code>AccessTools.FieldRefAccess</code> delegates once. Capture
+<code>&lt;&gt;1__state</code> in a prefix; act in the postfix only when
+<code>MoveNext</code> returns false from a state other than -1. That fires once
+per completed run and never on a re-entered finished iterator.
+
 ## 14. Diagnose from evidence, not from the visible symptom alone
 
 The BepInEx log is the first diagnostic surface:

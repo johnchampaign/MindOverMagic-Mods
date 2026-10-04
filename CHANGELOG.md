@@ -27,6 +27,15 @@
   through walls. Fire Adepts cook twice as fast and start battles with two
   rounds of Counterattack. Dark Archmages' ordinary needs stop decaying. Each
   Nature Archmage gives every other mage +5 Conviction target.
+- Add more rank powers. Earth Adepts start battles with armour equal to half
+  their Max HP, and Earth Archmages are immune to harmful combat effects.
+  Water Adepts shed harmful combat effects every round. Lightning Archmages
+  cast without spending mana. Dark Adepts regain 10% of their spell damage and
+  25 HP whenever a foe falls. While the school has a Nature Adept, every room
+  gains +2 Luxury.
+- Add Council powers Refining (2: refineries return double), Mending (6:
+  wounds close three times as fast) and Steady Minds (7: breaks no longer
+  leave mages At Death's Door).
 - Add the Archmage Council. Every Archmage rank in the school counts. At 3,
   every mage gains +10 Conviction target; at 5, teaching and learning run
   twice as fast. The founder carries a badge listing the powers in force.

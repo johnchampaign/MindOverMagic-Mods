@@ -38,6 +38,10 @@ RANK_EFFECTS = {
     ("Pyromancy", "Archmage"): ["  WorkProgressModifiers:", "  - JobType: Cook", "    ModifierPercentage: 1",
                                 "  BattleChildStatuses: [{ Key: Counterattack }]"],
     ("Manipulation", "Archmage"): ["  StatusEffects: [GhostMovement]"],
+    ("Geomancy", "Adept"): ["  BattleChildStatuses: [{ Key: ArchmageProgression_EarthBulwark }]"],
+    ("Geomancy", "Archmage"): ["  BattleChildStatuses: [{ Key: ArchmageProgression_EarthBulwark }]"],
+    ("Necromancy", "Adept"): ["  FloatVariables:", "    HPGainOnEnemyDeath: 0"],
+    ("Necromancy", "Archmage"): ["  FloatVariables:", "    HPGainOnEnemyDeath: 0"],
 }
 
 NATURE_EMBRACE_LEVELS = 20
@@ -101,6 +105,13 @@ def ranks():
             text = f"{reached.format(school=school)} {benefit(school, link)}{{Powers}}"
             lines += status(key, "Alert", name.format(school=school), text,
                             RANK_EFFECTS.get((school, rank), ()), flavor=flavor, log=True)
+    # Battle-start armour for Earth ranks, modelled on the base game's BattleArmor1_Battle.
+    lines += status(
+        "ArchmageProgression_EarthBulwark", "None", "Stone Bulwark",
+        "Adds {Percent} of <slink=MaxHP> as <slink=TempHP> on battle start.",
+        ["  BattleIcon: Armor", "  BattleString:", "    Text: Armor",
+         "    Key: Mod.ArchmageProgression_EarthBulwark.BattleString",
+         "  ClearAfterBattle: true", "  PercentArmorChangeOnAdd: 0.5", "  ShowLargeIcon: true"])
     write("archmage_ranks.yaml", lines)
 
 

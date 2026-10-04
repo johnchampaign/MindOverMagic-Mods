@@ -70,6 +70,7 @@
   Beneficial: true
   Persistent: true
   KeepOnAdultify: true
+  BattleChildStatuses: [{ Key: ArchmageProgression_EarthBulwark }]
 
 - Id: { Key: ArchmageProgression_Geomancy_Archmage }
   DisplayType: Alert
@@ -90,6 +91,7 @@
   Beneficial: true
   Persistent: true
   KeepOnAdultify: true
+  BattleChildStatuses: [{ Key: ArchmageProgression_EarthBulwark }]
 
 - Id: { Key: ArchmageProgression_Divination_Adept }
   DisplayType: Alert
@@ -231,6 +233,8 @@
   Beneficial: true
   Persistent: true
   KeepOnAdultify: true
+  FloatVariables:
+    HPGainOnEnemyDeath: 0
 
 - Id: { Key: ArchmageProgression_Necromancy_Archmage }
   DisplayType: Alert
@@ -251,6 +255,8 @@
   Beneficial: true
   Persistent: true
   KeepOnAdultify: true
+  FloatVariables:
+    HPGainOnEnemyDeath: 0
 
 - Id: { Key: ArchmageProgression_Viturgy_Adept }
   DisplayType: Alert
@@ -291,3 +297,23 @@
   Beneficial: true
   Persistent: true
   KeepOnAdultify: true
+
+- Id: { Key: ArchmageProgression_EarthBulwark }
+  DisplayType: None
+  DisplayName:
+    Text: "Stone Bulwark"
+    Key: Mod.ArchmageProgression_EarthBulwark.DisplayName
+  Description:
+    Text: "Adds {Percent} of <slink=MaxHP> as <slink=TempHP> on battle start."
+    Key: Mod.ArchmageProgression_EarthBulwark.Description
+  ShownInGroupRules: false
+  Beneficial: true
+  Persistent: true
+  KeepOnAdultify: true
+  BattleIcon: Armor
+  BattleString:
+    Text: Armor
+    Key: Mod.ArchmageProgression_EarthBulwark.BattleString
+  ClearAfterBattle: true
+  PercentArmorChangeOnAdd: 0.5
+  ShowLargeIcon: true

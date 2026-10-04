@@ -42,6 +42,18 @@ public sealed class Plugin : BaseUnityPlugin
     internal static ConfigEntry<bool> FireBattleCounterattack { get; private set; } = null!;
     internal static ConfigEntry<bool> DarkArchmageNeedsSated { get; private set; } = null!;
     internal static ConfigEntry<float> NatureArchmageConvictionToOthers { get; private set; } = null!;
+    internal static ConfigEntry<float> EarthAdeptBattleArmour { get; private set; } = null!;
+    internal static ConfigEntry<bool> EarthArchmageImmunity { get; private set; } = null!;
+    internal static ConfigEntry<bool> WaterAdeptCleanse { get; private set; } = null!;
+    internal static ConfigEntry<bool> LightningArchmageFreeSpells { get; private set; } = null!;
+    internal static ConfigEntry<float> DarkAdeptLifesteal { get; private set; } = null!;
+    internal static ConfigEntry<float> DarkAdeptHealOnEnemyDeath { get; private set; } = null!;
+    internal static ConfigEntry<float> NatureAdeptLuxury { get; private set; } = null!;
+    internal static ConfigEntry<int> CouncilRefiningArchmages { get; private set; } = null!;
+    internal static ConfigEntry<float> CouncilRefiningMultiplier { get; private set; } = null!;
+    internal static ConfigEntry<int> CouncilMendingArchmages { get; private set; } = null!;
+    internal static ConfigEntry<float> CouncilMendingMultiplier { get; private set; } = null!;
+    internal static ConfigEntry<int> CouncilSteadyMindsArchmages { get; private set; } = null!;
     internal static ConfigEntry<bool> CouncilEnabled { get; private set; } = null!;
     internal static ConfigEntry<int> CouncilResolveArchmages { get; private set; } = null!;
     internal static ConfigEntry<float> CouncilResolveConviction { get; private set; } = null!;
@@ -116,6 +128,34 @@ public sealed class Plugin : BaseUnityPlugin
             "Rank powers", "Nature Archmage Conviction to others", 5f,
             "Conviction target every other mage gains from each Archmage of Viturgy (Nature). " +
             "0 disables. Restart required.");
+        EarthAdeptBattleArmour = Config.Bind(
+            "Rank powers", "Earth Adept battle armour", 0.5f,
+            "Armour granted to Adepts and Archmages of Geomancy (Earth) at the start of every " +
+            "battle, as a fraction of Max HP (0.5 = 50%). 0 disables. Restart required.");
+        EarthArchmageImmunity = Config.Bind(
+            "Rank powers", "Earth Archmage immunity", true,
+            "Archmages of Geomancy cannot be given harmful combat effects (the debuffs the " +
+            "Sanctified terrain cleanses, such as Stunned, Blinded, Burns and Fear). Restart required.");
+        WaterAdeptCleanse = Config.Bind(
+            "Rank powers", "Water Adept cleanse", true,
+            "Adepts and Archmages of Hydrokinesis (Water) shed harmful combat effects at the " +
+            "start of every battle round. Restart required.");
+        LightningArchmageFreeSpells = Config.Bind(
+            "Rank powers", "Lightning Archmage free spells", true,
+            "Archmages of Divination (Lightning) cast every spell, in battle or at school, " +
+            "without spending mana. Restart required.");
+        DarkAdeptLifesteal = Config.Bind(
+            "Rank powers", "Dark Adept lifesteal", 0.1f,
+            "Share of the damage their spells deal that Adepts and Archmages of Necromancy " +
+            "(Dark) regain as HP (0.1 = 10%). 0 disables. Restart required.");
+        DarkAdeptHealOnEnemyDeath = Config.Bind(
+            "Rank powers", "Dark Adept heal on enemy death", 25f,
+            "HP Adepts and Archmages of Necromancy regain whenever a foe falls in battle. " +
+            "0 disables. Restart required.");
+        NatureAdeptLuxury = Config.Bind(
+            "Rank powers", "Nature Adept room Luxury", 2f,
+            "Luxury added to every room while the school has at least one Adept or Archmage " +
+            "of Viturgy (Nature). Does not stack. 0 disables. Restart required.");
 
         CouncilEnabled = Config.Bind(
             "Archmage Council", "Enabled", true,
@@ -136,6 +176,22 @@ public sealed class Plugin : BaseUnityPlugin
         CouncilScholarshipSpeedBonus = Config.Bind(
             "Archmage Council", "Scholarship: speed bonus", 1f,
             "Extra teaching and learning speed from Scholarship: 1 = twice as fast. Restart required.");
+        CouncilRefiningArchmages = Config.Bind(
+            "Archmage Council", "Refining: Archmage ranks needed", 2,
+            "Archmage ranks the school needs before refineries hand back more. 0 disables. Restart required.");
+        CouncilRefiningMultiplier = Config.Bind(
+            "Archmage Council", "Refining: output multiplier", 2f,
+            "Output multiplier for the Earth, Air, Fire and Dark refineries. Restart required.");
+        CouncilMendingArchmages = Config.Bind(
+            "Archmage Council", "Mending: Archmage ranks needed", 6,
+            "Archmage ranks the school needs before wounds close faster. 0 disables. Restart required.");
+        CouncilMendingMultiplier = Config.Bind(
+            "Archmage Council", "Mending: healing speed multiplier", 3f,
+            "How much faster wounds (trauma injuries) close. Restart required.");
+        CouncilSteadyMindsArchmages = Config.Bind(
+            "Archmage Council", "Steady Minds: Archmage ranks needed", 7,
+            "Archmage ranks the school needs before mental breaks stop leaving mages At " +
+            "Death's Door. 0 disables. Restart required.");
 
         var harmony = new Harmony(PluginGuid);
         try
@@ -312,6 +368,7 @@ internal static class SchoolRanks
         }
 
         keys.AddRange(SchoolPowers.AllKeys());
+        keys.Add(RankPowers.BulwarkKey);
         return keys;
     }
 
@@ -442,6 +499,10 @@ internal static class RankPowers
         (!archmageOnly &&
          CharacterStatusUtils.HasStatusKey(SchoolRanks.StatusKey(school, SchoolRanks.AdeptRank), statuses));
 
+    internal const string BulwarkKey = "ArchmageProgression_EarthBulwark";
+
+    private static string Percent(float fraction) => SchoolRanks.Number(fraction * 100f) + "%";
+
     internal static string Describe(Skill school, string rank)
     {
         var archmage = rank == SchoolRanks.ArchmageRank;
@@ -463,7 +524,7 @@ internal static class RankPowers
             case Skill.Pyromancy:
                 if (Plugin.FireCookingSpeedBonus.Value > 0f)
                 {
-                    lines.Add($"Cooks {SchoolRanks.Number(Plugin.FireCookingSpeedBonus.Value * 100f)}% faster.");
+                    lines.Add($"Cooks {Percent(Plugin.FireCookingSpeedBonus.Value)} faster.");
                 }
 
                 if (Plugin.FireBattleCounterattack.Value)
@@ -472,7 +533,43 @@ internal static class RankPowers
                 }
 
                 break;
+            case Skill.Geomancy:
+                if (Plugin.EarthAdeptBattleArmour.Value > 0f)
+                {
+                    lines.Add($"Starts every battle with <slink=TempHP> equal to {Percent(Plugin.EarthAdeptBattleArmour.Value)} of <slink=MaxHP>.");
+                }
+
+                if (archmage && Plugin.EarthArchmageImmunity.Value)
+                {
+                    lines.Add("Immune to harmful combat effects such as Stunned, Blinded, Burns and Fear.");
+                }
+
+                break;
+            case Skill.Hydrokinesis:
+                if (Plugin.WaterAdeptCleanse.Value)
+                {
+                    lines.Add("Sheds harmful combat effects at the start of every battle round.");
+                }
+
+                break;
+            case Skill.Divination:
+                if (archmage && Plugin.LightningArchmageFreeSpells.Value)
+                {
+                    lines.Add("Casts every spell without spending mana, in battle or at school.");
+                }
+
+                break;
             case Skill.Necromancy:
+                if (Plugin.DarkAdeptLifesteal.Value > 0f)
+                {
+                    lines.Add($"Regains {Percent(Plugin.DarkAdeptLifesteal.Value)} of the damage their spells deal as <slink=HP>.");
+                }
+
+                if (Plugin.DarkAdeptHealOnEnemyDeath.Value > 0f)
+                {
+                    lines.Add($"Regains {SchoolRanks.Number(Plugin.DarkAdeptHealOnEnemyDeath.Value)} <slink=HP> whenever a foe falls in battle.");
+                }
+
                 if (archmage && Plugin.DarkArchmageNeedsSated.Value)
                 {
                     lines.Add("Ordinary needs no longer decay.");
@@ -480,6 +577,12 @@ internal static class RankPowers
 
                 break;
             case Skill.Viturgy:
+                if (Plugin.NatureAdeptLuxury.Value != 0f)
+                {
+                    lines.Add($"While the school has a Viturgy Adept or Archmage, every room gains " +
+                              $"+{SchoolRanks.Number(Plugin.NatureAdeptLuxury.Value)} <slink=Luxury>.");
+                }
+
                 if (archmage && Plugin.NatureArchmageConvictionToOthers.Value > 0f)
                 {
                     lines.Add($"Every other mage in the school gains " +
@@ -490,6 +593,23 @@ internal static class RankPowers
         }
 
         return lines.Count == 0 ? string.Empty : "\n\nPowers: " + string.Join(" ", lines);
+    }
+
+    /// <summary>Fill the Earth battle-armour status from the config. False for any other status.</summary>
+    internal static bool TryConfigureBulwark(CharacterStatusConfig definition)
+    {
+        if (definition.Id.Key != BulwarkKey)
+        {
+            return false;
+        }
+
+        definition.PercentArmorChangeOnAdd = Plugin.EarthAdeptBattleArmour.Value;
+        if (definition.Description?.Text is { } text)
+        {
+            definition.Description.Text = text.Replace("{Percent}", Percent(Plugin.EarthAdeptBattleArmour.Value));
+        }
+
+        return true;
     }
 
     /// <summary>Tune or strip the native power fields to match the config.</summary>
@@ -519,6 +639,23 @@ internal static class RankPowers
             !Plugin.AirArchmageGhostMovement.Value)
         {
             definition.StatusEffects = null;
+        }
+
+        if (school == Skill.Geomancy && Plugin.EarthAdeptBattleArmour.Value <= 0f)
+        {
+            definition.BattleChildStatuses = null;
+        }
+
+        if (school == Skill.Necromancy && definition.FloatVariables is { } variables)
+        {
+            if (Plugin.DarkAdeptHealOnEnemyDeath.Value > 0f)
+            {
+                variables["HPGainOnEnemyDeath"] = Plugin.DarkAdeptHealOnEnemyDeath.Value;
+            }
+            else
+            {
+                variables.Remove("HPGainOnEnemyDeath");
+            }
         }
     }
 
@@ -779,7 +916,8 @@ internal static class RankStatusCatalogPatch
     private static void FillDescription(CharacterStatusConfig definition)
     {
         var key = definition.Id.Key ?? string.Empty;
-        if (ViturgyAttunement.TryConfigure(definition) || SchoolPowers.TryConfigure(definition))
+        if (ViturgyAttunement.TryConfigure(definition) || SchoolPowers.TryConfigure(definition) ||
+            RankPowers.TryConfigureBulwark(definition))
         {
             return;
         }
@@ -1137,6 +1275,14 @@ internal static class SchoolPowers
 
     private static int _lastCouncilCount = -1;
 
+    /// <summary>The school's Archmage rank count from the latest sweep.</summary>
+    internal static int CouncilCount { get; private set; }
+
+    /// <summary>Whether the Nature Adept room Luxury bonus currently applies.</summary>
+    internal static bool NatureLuxuryActive { get; private set; }
+
+    internal static bool Unlocked(int needed) => Unlocked(CouncilCount, needed);
+
     private static string EmbraceKey(int count) => EmbracePrefix + count.ToString(CultureInfo.InvariantCulture);
 
     private static string BadgeKey(int count) => BadgePrefix + count.ToString(CultureInfo.InvariantCulture);
@@ -1198,7 +1344,7 @@ internal static class SchoolPowers
     /// <summary>The council powers as tooltip text for a school holding this many Archmage ranks.</summary>
     private static string CouncilPowersText(int count)
     {
-        var lines = new List<string>();
+        var lines = new List<(int Needed, string Text)>();
 
         void Add(string name, int needed, bool configured, string effect)
         {
@@ -1207,16 +1353,23 @@ internal static class SchoolPowers
                 return;
             }
 
-            lines.Add(count >= needed
+            lines.Add((needed, count >= needed
                 ? $"In force ({needed}+): {name}. {effect}"
-                : $"Needs {needed}: {name}. {effect}");
+                : $"Needs {needed}: {name}. {effect}"));
         }
 
         Add("Resolve", Plugin.CouncilResolveArchmages.Value, Plugin.CouncilResolveConviction.Value != 0f,
             $"Every mage gains +{SchoolRanks.Number(Plugin.CouncilResolveConviction.Value)} <slink=Mood> target.");
         Add("Scholarship", Plugin.CouncilScholarshipArchmages.Value, Plugin.CouncilScholarshipSpeedBonus.Value > 0f,
             $"Teaching and learning are {SchoolRanks.Number(Plugin.CouncilScholarshipSpeedBonus.Value * 100f)}% faster.");
-        return lines.Count == 0 ? string.Empty : "\n\n" + string.Join("\n", lines);
+        Add("Refining", Plugin.CouncilRefiningArchmages.Value, Plugin.CouncilRefiningMultiplier.Value > 1f,
+            $"Refineries hand back {SchoolRanks.Number(Plugin.CouncilRefiningMultiplier.Value)}x what they make.");
+        Add("Mending", Plugin.CouncilMendingArchmages.Value, Plugin.CouncilMendingMultiplier.Value > 1f,
+            $"Wounds close {SchoolRanks.Number(Plugin.CouncilMendingMultiplier.Value)}x as fast.");
+        Add("Steady Minds", Plugin.CouncilSteadyMindsArchmages.Value, true,
+            "A mental break no longer leaves a mage At Death's Door.");
+        lines.Sort((a, b) => a.Needed.CompareTo(b.Needed));
+        return lines.Count == 0 ? string.Empty : "\n\n" + string.Join("\n", lines.ConvertAll(line => line.Text));
     }
 
     /// <summary>Fill one school-wide definition from the config. False for any other status.</summary>
@@ -1316,11 +1469,17 @@ internal static class SchoolPowers
     {
         var councilCount = 0;
         var natureArchmages = 0;
+        var natureAdepts = 0;
         foreach (var mage in mages)
         {
             if (!mage.TryGetComponent<CharacterStatusComponent>(out var statuses))
             {
                 continue;
+            }
+
+            if (RankPowers.HasRank(statuses, Skill.Viturgy, archmageOnly: false))
+            {
+                natureAdepts++;
             }
 
             foreach (var school in SchoolRanks.Schools)
@@ -1342,6 +1501,20 @@ internal static class SchoolPowers
                 $"Archmage Council: the school holds {councilCount} Archmage rank(s), " +
                 $"{natureArchmages} of them in Viturgy.");
             _lastCouncilCount = councilCount;
+        }
+
+        CouncilCount = councilCount;
+        var luxury = Plugin.NatureAdeptLuxury.Value != 0f && natureAdepts > 0;
+        if (luxury != NatureLuxuryActive)
+        {
+            NatureLuxuryActive = luxury;
+            Plugin.ModLog.LogInfo(luxury
+                ? "Nature Adept Luxury bonus is now active; recalculating rooms."
+                : "Nature Adept Luxury bonus is no longer active; recalculating rooms.");
+            if (Simulation.Instance is { } simulation)
+            {
+                UpdateRoomDataSystem.FullUpdate(simulation, false);
+            }
         }
 
         var natureBonus = Plugin.NatureArchmageConvictionToOthers.Value > 0f;
@@ -1523,5 +1696,403 @@ internal static class NecromancyNeedDecayPatch
         {
             Snapshot.Clear();
         }
+    }
+}
+
+/// <summary>
+/// The game's own notion of a harmful combat effect: a non-beneficial status that the
+/// "Sanctified" terrain cleanses (it lists Terrain_Sanctified in its NegConditions). This
+/// covers enemy debuffs such as Stunned, Blinded, Burns, Fear and Soaked while leaving
+/// ranks, fleeing, need levels, sleep, injuries and knock-outs alone.
+/// </summary>
+internal static class HarmfulStatus
+{
+    private static DefId<CharacterStatusConfig>? _sanctified;
+
+    internal static bool Is(CharacterStatusConfig? config)
+    {
+        if (config is null || config.Beneficial || config.NegConditions is not { Count: > 0 } conditions)
+        {
+            return false;
+        }
+
+        if (_sanctified is null)
+        {
+            if (DefinitionCatalog<CharacterStatusConfig>.Instance is not { } catalog ||
+                !catalog.TryGetDefId("Terrain_Sanctified", out var id))
+            {
+                return false;
+            }
+
+            _sanctified = id;
+        }
+
+        return conditions.Contains(_sanctified.Value);
+    }
+}
+
+/// <summary>Earth Archmage: harmful combat effects cannot be applied.</summary>
+[HarmonyPatch(typeof(CharacterStatusUtils), nameof(CharacterStatusUtils.IsStatusAllowed))]
+internal static class EarthImmunityPatch
+{
+    private static bool Prepare() => Plugin.EarthArchmageImmunity.Value;
+
+    [HarmonyPostfix]
+    private static void BlockHarmful(CharacterStatusConfig __0, CharacterStatusComponent __1, ref bool __result)
+    {
+        if (__result && __1 is not null && HarmfulStatus.Is(__0) &&
+            RankPowers.HasRank(__1, Skill.Geomancy, archmageOnly: true))
+        {
+            __result = false;
+        }
+    }
+}
+
+/// <summary>Water Adept: harmful combat effects are cleansed at the start of every round.</summary>
+[HarmonyPatch(typeof(BattleUtils), nameof(BattleUtils.OnRoundStart))]
+internal static class WaterCleansePatch
+{
+    private static readonly List<DefId<CharacterStatusConfig>> ToRemove = new();
+
+    private static bool Prepare() => Plugin.WaterAdeptCleanse.Value;
+
+    [HarmonyPostfix]
+    private static void Cleanse(BattleData __0)
+    {
+        if (__0?.ActiveParty is not { } party)
+        {
+            return;
+        }
+
+        try
+        {
+            foreach (var member in party)
+            {
+                if (member?.Entity is not { } entity ||
+                    !entity.TryGetComponent<CharacterStatusComponent>(out var statuses) ||
+                    !RankPowers.HasRank(statuses, Skill.Hydrokinesis, archmageOnly: false))
+                {
+                    continue;
+                }
+
+                ToRemove.Clear();
+                foreach (var status in statuses.Statuses.Values)
+                {
+                    if (HarmfulStatus.Is(status.Config))
+                    {
+                        ToRemove.Add(status.StatusId);
+                    }
+                }
+
+                foreach (var id in ToRemove)
+                {
+                    CharacterStatusUtils.RemoveStatus(id, statuses);
+                }
+            }
+        }
+        catch (Exception exception)
+        {
+            Plugin.ModLog.LogError($"Water cleanse failed: {exception}");
+        }
+        finally
+        {
+            ToRemove.Clear();
+        }
+    }
+}
+
+/// <summary>
+/// Lightning Archmage: spells cost no mana. Payment multiplies by the cost modifier after
+/// adding the flat cost, so both are zeroed; the affordability check skips the modifier for
+/// percentage-cost spells, so it is forced to succeed as well.
+/// </summary>
+internal static class FreeSpells
+{
+    internal static bool Applies(Entity? caster) =>
+        Plugin.LightningArchmageFreeSpells.Value && caster is not null &&
+        caster.TryGetComponent<CharacterStatusComponent>(out var statuses) &&
+        RankPowers.HasRank(statuses, Skill.Divination, archmageOnly: true);
+}
+
+[HarmonyPatch(typeof(CharacterStatusUtils), nameof(CharacterStatusUtils.GetManaCostModifier))]
+internal static class FreeSpellModifierPatch
+{
+    private static bool Prepare() => Plugin.LightningArchmageFreeSpells.Value;
+
+    [HarmonyPostfix]
+    private static void NoCost(Entity __0, ref float __result)
+    {
+        if (FreeSpells.Applies(__0))
+        {
+            __result = 0f;
+        }
+    }
+}
+
+[HarmonyPatch(typeof(CharacterStatusUtils), nameof(CharacterStatusUtils.GetExtraFlatManaCost))]
+internal static class FreeSpellFlatCostPatch
+{
+    private static bool Prepare() => Plugin.LightningArchmageFreeSpells.Value;
+
+    [HarmonyPostfix]
+    private static void NoCost(Entity __0, ref float __result)
+    {
+        if (FreeSpells.Applies(__0))
+        {
+            __result = 0f;
+        }
+    }
+}
+
+[HarmonyPatch(typeof(SpellUtils), nameof(SpellUtils.HasEnoughManaToCast))]
+internal static class FreeSpellAffordPatch
+{
+    private static bool Prepare() => Plugin.LightningArchmageFreeSpells.Value;
+
+    [HarmonyPostfix]
+    private static void Afford(Entity __0, ref bool __result)
+    {
+        if (!__result && FreeSpells.Applies(__0))
+        {
+            __result = true;
+        }
+    }
+}
+
+/// <summary>
+/// Dark Adept lifesteal: heals the caster a share of the damage each of its spells deals,
+/// through the game's own leech healing so logs and floating numbers match native leech.
+/// Healing on enemy deaths is native (HPGainOnEnemyDeath on the rank status).
+/// </summary>
+[HarmonyPatch(typeof(DoDamageComponent), "HandlePostDamage")]
+internal static class DarkLifestealPatch
+{
+    private static bool Prepare() => Plugin.DarkAdeptLifesteal.Value > 0f;
+
+    [HarmonyPostfix]
+    private static void Leech(DoDamageComponent __instance)
+    {
+        try
+        {
+            if (__instance?.ResultsPerTarget is not { Count: > 0 } results ||
+                __instance.Entity is not { } spell ||
+                !spell.TryGetComponent<CastByComponent>(out var castBy) ||
+                castBy.CastByEntity is not { } caster ||
+                !caster.TryGetComponent<CharacterStatusComponent>(out var statuses) ||
+                !RankPowers.HasRank(statuses, Skill.Necromancy, archmageOnly: false) ||
+                !caster.TryGetComponent<HitPointComponent>(out var hitPoints))
+            {
+                return;
+            }
+
+            var dealt = 0f;
+            foreach (var pair in results)
+            {
+                if (pair.Key != caster && pair.Value is { } result && result.DamageDealt > 0f)
+                {
+                    dealt += result.DamageDealt;
+                }
+            }
+
+            var heal = dealt * Plugin.DarkAdeptLifesteal.Value;
+            if (heal > 0f)
+            {
+                hitPoints.ModifyHPFromLeech(heal, caster, spell);
+            }
+        }
+        catch (Exception exception)
+        {
+            Plugin.ModLog.LogError($"Dark lifesteal failed: {exception}");
+        }
+    }
+}
+
+/// <summary>
+/// Nature Adept: every room gains Luxury while the school has an Adept or Archmage of
+/// Viturgy. Added to the room's total at the end of the game's own recalculation, the same
+/// place the game folds in its display-affinity Luxury bonus, so room tiers, Luxury
+/// statuses, bedroom quests and the room UI all see it.
+/// </summary>
+[HarmonyPatch]
+internal static class NatureLuxuryPatch
+{
+    private static readonly MethodBase? Target = Resolve(out _state, out _room, out _roomData);
+    private static AccessTools.FieldRef<object, int>? _state;
+    private static AccessTools.FieldRef<object, RoomComponent>? _room;
+    private static AccessTools.FieldRef<object, Room>? _roomData;
+
+    private static MethodBase? Resolve(
+        out AccessTools.FieldRef<object, int>? state,
+        out AccessTools.FieldRef<object, RoomComponent>? room,
+        out AccessTools.FieldRef<object, Room>? roomData)
+    {
+        state = null;
+        room = null;
+        roomData = null;
+        try
+        {
+            var method = AccessTools.Method(typeof(RoomDataUtils), "ReCalculateAllRoomData");
+            var moveNext = method is null ? null : AccessTools.EnumeratorMoveNext(method);
+            var iterator = moveNext?.DeclaringType;
+            if (iterator is null)
+            {
+                Plugin.ModLog.LogWarning("Could not find the room recalculation; the Nature Luxury bonus is inactive.");
+                return null;
+            }
+
+            FieldInfo? Find(Type type) => Array.Find(
+                iterator.GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic),
+                field => field.FieldType == type);
+
+            var stateField = AccessTools.Field(iterator, "<>1__state");
+            var roomField = Find(typeof(RoomComponent));
+            var roomDataField = Find(typeof(Room));
+            if (stateField is null || roomField is null || roomDataField is null)
+            {
+                Plugin.ModLog.LogWarning("Room recalculation layout changed; the Nature Luxury bonus is inactive.");
+                return null;
+            }
+
+            state = AccessTools.FieldRefAccess<int>(iterator, stateField.Name);
+            room = AccessTools.FieldRefAccess<RoomComponent>(iterator, roomField.Name);
+            roomData = AccessTools.FieldRefAccess<Room>(iterator, roomDataField.Name);
+            return moveNext;
+        }
+        catch (Exception exception)
+        {
+            Plugin.ModLog.LogWarning($"Nature Luxury bonus is inactive: {exception.Message}");
+            return null;
+        }
+    }
+
+    private static bool Prepare() => Plugin.NatureAdeptLuxury.Value != 0f && Target is not null;
+
+    private static MethodBase TargetMethod() => Target!;
+
+    [HarmonyPrefix]
+    private static void RecordState(object __instance, out int __state) => __state = _state!(__instance);
+
+    [HarmonyPostfix]
+    private static void AddLuxury(object __instance, bool __result, int __state)
+    {
+        // Only once, when a recalculation that actually started finishes. The early exit for
+        // a vanished room returns before the luxury reset and leaves roomData null.
+        if (__result || __state == -1 || !SchoolPowers.NatureLuxuryActive || _roomData!(__instance) is null ||
+            _room!(__instance) is not { } room)
+        {
+            return;
+        }
+
+        room.TotalLuxuryValue += Plugin.NatureAdeptLuxury.Value;
+    }
+}
+
+/// <summary>Council: refineries hand back more of what they make.</summary>
+[HarmonyPatch(typeof(CraftErrand), "CreateRecipeOutput")]
+internal static class CouncilRefiningPatch
+{
+    private static readonly HashSet<string> Refineries = new(StringComparer.Ordinal)
+    {
+        "EarthRefinery", "AirRefinery", "AirRefinery_Deprecated", "FireRefinery", "MiddenHeap"
+    };
+
+    private static bool Prepare() =>
+        Plugin.CouncilRefiningArchmages.Value > 0 && Plugin.CouncilRefiningMultiplier.Value > 1f;
+
+    [HarmonyPrefix]
+    private static void MoreOutput(CraftErrand __instance, ref int __0)
+    {
+        if (__0 <= 0 || !SchoolPowers.Unlocked(Plugin.CouncilRefiningArchmages.Value) ||
+            __instance?.Entity?.EntityKey.Key is not { } station || !Refineries.Contains(station))
+        {
+            return;
+        }
+
+        __0 = (int)Math.Round(__0 * Plugin.CouncilRefiningMultiplier.Value, MidpointRounding.AwayFromZero);
+    }
+}
+
+/// <summary>
+/// Council: wounds close faster. Wounds are the injury catalog's trauma statuses, which the
+/// generic status-expiration system counts down by dt each tick. Taking extra time off just
+/// before it runs keeps expiry, the scar that follows and all logging native.
+/// </summary>
+[HarmonyPatch(typeof(UpdateCharacterStatusExpirationSystem), nameof(UpdateCharacterStatusExpirationSystem.Update))]
+internal static class CouncilMendingPatch
+{
+    private static readonly List<CharacterStatusComponent> Scratch = new();
+
+    private static bool Prepare() =>
+        Plugin.CouncilMendingArchmages.Value > 0 && Plugin.CouncilMendingMultiplier.Value > 1f;
+
+    [HarmonyPrefix]
+    private static void HealFaster(Simulation __0, float __1)
+    {
+        if (__1 <= 0f || !SchoolPowers.Unlocked(Plugin.CouncilMendingArchmages.Value) ||
+            __0?.Configs?.InjuryCatalog?.TraumaStatuses is not { Count: > 0 } wounds ||
+            __0.ComponentManager is not { } components)
+        {
+            return;
+        }
+
+        var extra = (Plugin.CouncilMendingMultiplier.Value - 1f) * __1;
+        try
+        {
+            Scratch.Clear();
+            components.InSchoolGather(Scratch, static c => c.Entity is { } e &&
+                (e.HasComponent<StudentComponent>() || e.HasComponent<StaffComponent>()));
+            foreach (var statuses in Scratch)
+            {
+                foreach (var status in statuses.GetTimedStatuses())
+                {
+                    if (wounds.Contains(status.StatusId))
+                    {
+                        status.TimeRemaining -= extra;
+                    }
+                }
+            }
+        }
+        catch (Exception exception)
+        {
+            Plugin.ModLog.LogError($"Council mending failed: {exception}");
+        }
+        finally
+        {
+            Scratch.Clear();
+        }
+    }
+}
+
+/// <summary>
+/// Council: a mental break no longer leaves the mage At Death's Door. Only knock-outs
+/// caused by a break are skipped; combat and zero-HP knock-outs are untouched. The mood
+/// recovery the game grants on reviving a broken mage is granted straight away instead.
+/// </summary>
+[HarmonyPatch(typeof(InjuryUtils), nameof(InjuryUtils.ApplyKnockOut))]
+internal static class CouncilSteadyMindsPatch
+{
+    private static bool Prepare() => Plugin.CouncilSteadyMindsArchmages.Value > 0;
+
+    [HarmonyPrefix]
+    private static bool SkipBreakKnockOut(Entity __0, KnockedOutComponent.KnockOutCause __1)
+    {
+        if (__1 != KnockedOutComponent.KnockOutCause.Break || __0 is null ||
+            !SchoolPowers.Unlocked(Plugin.CouncilSteadyMindsArchmages.Value))
+        {
+            return true;
+        }
+
+        try
+        {
+            CharacterStatusUtils.AddStatusKey("HadBreak", __0, null);
+            CharacterStatusUtils.AddStatusKey("PostBreakStatusClear", __0, null);
+            Plugin.ModLog.LogInfo($"Archmage Council spared {EntityUtils.GetDisplayName(__0)} from At Death's Door after a break.");
+        }
+        catch (Exception exception)
+        {
+            Plugin.ModLog.LogError($"Steady Minds recovery statuses failed: {exception}");
+        }
+
+        return false;
     }
 }

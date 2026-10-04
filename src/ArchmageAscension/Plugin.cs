@@ -2,7 +2,9 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
+using System.Linq;
 using System.Reflection;
+using System.Reflection.Emit;
 using BepInEx;
 using BepInEx.Configuration;
 using BepInEx.Logging;
@@ -49,6 +51,16 @@ public sealed class Plugin : BaseUnityPlugin
     internal static ConfigEntry<float> DarkAdeptLifesteal { get; private set; } = null!;
     internal static ConfigEntry<float> DarkAdeptHealOnEnemyDeath { get; private set; } = null!;
     internal static ConfigEntry<float> NatureAdeptLuxury { get; private set; } = null!;
+    internal static ConfigEntry<bool> LightningAdeptManaVein { get; private set; } = null!;
+    internal static ConfigEntry<bool> FireArchmageRenewal { get; private set; } = null!;
+    internal static ConfigEntry<float> FireRenewalIntervalHours { get; private set; } = null!;
+    internal static ConfigEntry<float> FireRenewalConviction { get; private set; } = null!;
+    internal static ConfigEntry<int> DarkArchmageBountyAmount { get; private set; } = null!;
+    internal static ConfigEntry<string> DarkArchmageBountyReagents { get; private set; } = null!;
+    internal static ConfigEntry<bool> EarthArchmageNexusGateways { get; private set; } = null!;
+    internal static ConfigEntry<int> CouncilRematchArchmages { get; private set; } = null!;
+    internal static ConfigEntry<int> CouncilScoutingArchmages { get; private set; } = null!;
+    internal static ConfigEntry<float> CouncilTravelCutPerArchmage { get; private set; } = null!;
     internal static ConfigEntry<int> CouncilRefiningArchmages { get; private set; } = null!;
     internal static ConfigEntry<float> CouncilRefiningMultiplier { get; private set; } = null!;
     internal static ConfigEntry<int> CouncilMendingArchmages { get; private set; } = null!;
@@ -156,6 +168,32 @@ public sealed class Plugin : BaseUnityPlugin
             "Rank powers", "Nature Adept room Luxury", 2f,
             "Luxury added to every room while the school has at least one Adept or Archmage " +
             "of Viturgy (Nature). Does not stack. 0 disables. Restart required.");
+        LightningAdeptManaVein = Config.Bind(
+            "Rank powers", "Lightning Adept mana vein", true,
+            "Adepts and Archmages of Divination (Lightning) start every battle standing on a " +
+            "mana vein, which halves spell costs while they stay on it. Restart required.");
+        FireArchmageRenewal = Config.Bind(
+            "Rank powers", "Fire Archmage renewal", true,
+            "Archmages of Pyromancy (Fire) periodically burn away one of their own traumas, or " +
+            "failing that a scar, and are Renewed by Flame. Restart required.");
+        FireRenewalIntervalHours = Config.Bind(
+            "Rank powers", "Fire Archmage renewal interval (game hours)", 24f,
+            "Game hours between two renewals for the same Archmage. Restart required.");
+        FireRenewalConviction = Config.Bind(
+            "Rank powers", "Fire Archmage renewal Conviction", 10f,
+            "Conviction target granted by Renewed by Flame for a day. Restart required.");
+        DarkArchmageBountyAmount = Config.Bind(
+            "Rank powers", "Dark Archmage reagent bounty amount", 5,
+            "Reagents each Archmage of Necromancy (Dark) gathers at midnight and at noon, " +
+            "delivered to the school entrance. 0 disables. Restart required.");
+        DarkArchmageBountyReagents = Config.Bind(
+            "Rank powers", "Dark Archmage reagent bounty reagents",
+            "Voidcap,MandrakeRoot,Bile,Brains,Viscera,ReapersCap",
+            "Comma-separated item keys; each bounty picks one at random. Restart required.");
+        EarthArchmageNexusGateways = Config.Bind(
+            "Rank powers", "Earth Archmage Nexus Gateways", true,
+            "While the school has an Archmage of Geomancy (Earth), Nexus Gateways can be built. " +
+            "Gateways teleport to each other. Restart required.");
 
         CouncilEnabled = Config.Bind(
             "Archmage Council", "Enabled", true,
@@ -192,6 +230,18 @@ public sealed class Plugin : BaseUnityPlugin
             "Archmage Council", "Steady Minds: Archmage ranks needed", 7,
             "Archmage ranks the school needs before mental breaks stop leaving mages At " +
             "Death's Door. 0 disables. Restart required.");
+        CouncilRematchArchmages = Config.Bind(
+            "Archmage Council", "Rematch: Archmage ranks needed", 1,
+            "Archmage ranks the school needs before boss rematches pay the first-victory rewards, " +
+            "relic included. 0 disables. Restart required.");
+        CouncilScoutingArchmages = Config.Bind(
+            "Archmage Council", "Open Ledgers: Archmage ranks needed", 4,
+            "Archmage ranks the school needs before scouting a faction reveals every side quest " +
+            "instead of two. 0 disables. Restart required.");
+        CouncilTravelCutPerArchmage = Config.Bind(
+            "Archmage Council", "Swift Travel: cut per Archmage rank", 0.1f,
+            "Share of remaining quest travel removed per Archmage rank (0.1 = a tenth each; ten " +
+            "ranks bring parties home at once). 0 disables. Restart required.");
 
         var harmony = new Harmony(PluginGuid);
         try
@@ -369,6 +419,8 @@ internal static class SchoolRanks
 
         keys.AddRange(SchoolPowers.AllKeys());
         keys.Add(RankPowers.BulwarkKey);
+        keys.Add(FireRenewal.RenewedKey);
+        keys.Add(FireRenewal.CooldownKey);
         return keys;
     }
 
@@ -532,6 +584,13 @@ internal static class RankPowers
                     lines.Add("Starts every battle with <slink=Counterattack> for two rounds.");
                 }
 
+                if (archmage && Plugin.FireArchmageRenewal.Value)
+                {
+                    lines.Add($"Every {SchoolRanks.Number(Plugin.FireRenewalIntervalHours.Value)} hours, burns away one " +
+                              $"of their own traumas or scars and is Renewed by Flame " +
+                              $"(+{SchoolRanks.Number(Plugin.FireRenewalConviction.Value)} <slink=Mood> target for a day).");
+                }
+
                 break;
             case Skill.Geomancy:
                 if (Plugin.EarthAdeptBattleArmour.Value > 0f)
@@ -544,6 +603,11 @@ internal static class RankPowers
                     lines.Add("Immune to harmful combat effects such as Stunned, Blinded, Burns and Fear.");
                 }
 
+                if (archmage && Plugin.EarthArchmageNexusGateways.Value)
+                {
+                    lines.Add("While the school has an Archmage of Earth, it can build Nexus Gateways.");
+                }
+
                 break;
             case Skill.Hydrokinesis:
                 if (Plugin.WaterAdeptCleanse.Value)
@@ -553,6 +617,11 @@ internal static class RankPowers
 
                 break;
             case Skill.Divination:
+                if (Plugin.LightningAdeptManaVein.Value)
+                {
+                    lines.Add("Starts every battle standing on a mana vein.");
+                }
+
                 if (archmage && Plugin.LightningArchmageFreeSpells.Value)
                 {
                     lines.Add("Casts every spell without spending mana, in battle or at school.");
@@ -573,6 +642,12 @@ internal static class RankPowers
                 if (archmage && Plugin.DarkArchmageNeedsSated.Value)
                 {
                     lines.Add("Ordinary needs no longer decay.");
+                }
+
+                if (archmage && Plugin.DarkArchmageBountyAmount.Value > 0)
+                {
+                    lines.Add($"At midnight and noon, gathers {Plugin.DarkArchmageBountyAmount.Value} of a random " +
+                              "dark reagent, delivered to the school entrance.");
                 }
 
                 break;
@@ -917,7 +992,7 @@ internal static class RankStatusCatalogPatch
     {
         var key = definition.Id.Key ?? string.Empty;
         if (ViturgyAttunement.TryConfigure(definition) || SchoolPowers.TryConfigure(definition) ||
-            RankPowers.TryConfigureBulwark(definition))
+            RankPowers.TryConfigureBulwark(definition) || FireRenewal.TryConfigure(definition))
         {
             return;
         }
@@ -1278,6 +1353,12 @@ internal static class SchoolPowers
     /// <summary>The school's Archmage rank count from the latest sweep.</summary>
     internal static int CouncilCount { get; private set; }
 
+    /// <summary>Archmages of Necromancy found by the latest sweep (reagent bounty recipients).</summary>
+    internal static List<Entity> DarkArchmages { get; } = new();
+
+    /// <summary>Whether the school has an Archmage of Geomancy (Nexus Gateways buildable).</summary>
+    internal static bool EarthArchmagePresent { get; private set; }
+
     /// <summary>Whether the Nature Adept room Luxury bonus currently applies.</summary>
     internal static bool NatureLuxuryActive { get; private set; }
 
@@ -1368,6 +1449,18 @@ internal static class SchoolPowers
             $"Wounds close {SchoolRanks.Number(Plugin.CouncilMendingMultiplier.Value)}x as fast.");
         Add("Steady Minds", Plugin.CouncilSteadyMindsArchmages.Value, true,
             "A mental break no longer leaves a mage At Death's Door.");
+        Add("Rematch Spoils", Plugin.CouncilRematchArchmages.Value, true,
+            "Boss rematches pay what the first victory paid, relic included.");
+        Add("Open Ledgers", Plugin.CouncilScoutingArchmages.Value, true,
+            "Scouting a faction reveals every side quest, not just two.");
+        if (Plugin.CouncilTravelCutPerArchmage.Value > 0f)
+        {
+            var full = (int)Math.Ceiling(1f / Plugin.CouncilTravelCutPerArchmage.Value - 0.0001f);
+            lines.Add((0, $"Swift Travel: each Archmage rank cuts quest travel by " +
+                          $"{SchoolRanks.Number(Plugin.CouncilTravelCutPerArchmage.Value * 100f)}%; now " +
+                          $"{SchoolRanks.Number(SwiftTravel.Factor(count) * 100f)}% of normal" +
+                          (count >= full ? ", parties return at once." : $", and at {full} parties return at once.")));
+        }
         lines.Sort((a, b) => a.Needed.CompareTo(b.Needed));
         return lines.Count == 0 ? string.Empty : "\n\n" + string.Join("\n", lines.ConvertAll(line => line.Text));
     }
@@ -1470,6 +1563,8 @@ internal static class SchoolPowers
         var councilCount = 0;
         var natureArchmages = 0;
         var natureAdepts = 0;
+        var earthArchmage = false;
+        DarkArchmages.Clear();
         foreach (var mage in mages)
         {
             if (!mage.TryGetComponent<CharacterStatusComponent>(out var statuses))
@@ -1481,6 +1576,14 @@ internal static class SchoolPowers
             {
                 natureAdepts++;
             }
+
+            if (RankPowers.HasRank(statuses, Skill.Necromancy, archmageOnly: true))
+            {
+                DarkArchmages.Add(mage);
+            }
+
+            earthArchmage |= RankPowers.HasRank(statuses, Skill.Geomancy, archmageOnly: true);
+            FireRenewal.TryRenew(mage, statuses);
 
             foreach (var school in SchoolRanks.Schools)
             {
@@ -1504,6 +1607,12 @@ internal static class SchoolPowers
         }
 
         CouncilCount = councilCount;
+        EarthArchmagePresent = earthArchmage;
+        if (Simulation.Instance is { } current)
+        {
+            SwiftTravel.Update(current, councilCount);
+        }
+
         var luxury = Plugin.NatureAdeptLuxury.Value != 0f && natureAdepts > 0;
         if (luxury != NatureLuxuryActive)
         {
@@ -2094,5 +2203,623 @@ internal static class CouncilSteadyMindsPatch
         }
 
         return false;
+    }
+}
+
+/// <summary>
+/// Lightning Adept: starts every battle standing on a mana vein. Rather than faking the
+/// buff, the plugin puts a real Terrain_ManaVein on the mage's starting slot right after
+/// the game sets up the friendly side's terrain, so the buff, its turn-by-turn refresh,
+/// the slot visual and the cleanup at battle end are all native.
+/// </summary>
+[HarmonyPatch(typeof(BattleUtils), "SpawnFriendlySide")]
+internal static class LightningManaVeinPatch
+{
+    private static DefId<CharacterStatusConfig>? _vein;
+
+    private static bool Prepare() => Plugin.LightningAdeptManaVein.Value;
+
+    [HarmonyPostfix]
+    private static void PlaceVeins(BattleData __0)
+    {
+        if (__0?.ActiveParty is not { } party || __0.CombatSlotModifiers is not { } slots)
+        {
+            return;
+        }
+
+        try
+        {
+            if (_vein is null)
+            {
+                if (DefinitionCatalog<CharacterStatusConfig>.Instance is not { } catalog ||
+                    !catalog.TryGetDefId("Terrain_ManaVein", out var id))
+                {
+                    return;
+                }
+
+                _vein = id;
+            }
+
+            foreach (var member in party)
+            {
+                if (member?.Entity is not { } entity ||
+                    !entity.TryGetComponent<CharacterStatusComponent>(out var statuses) ||
+                    !RankPowers.HasRank(statuses, Skill.Divination, archmageOnly: false))
+                {
+                    continue;
+                }
+
+                var slot = member.CombatSlotIndex;
+                if (slot < 0 || slots.Exists(m => m.Side == CombatSide.Left && m.SlotIndex == slot &&
+                                                  m.Status.GetDefinition() is { PermanentTerrain: true }))
+                {
+                    continue;
+                }
+
+                slots.RemoveAll(m => m.Side == CombatSide.Left && m.SlotIndex == slot);
+                slots.Add(new BattleData.CombatSlotModifier
+                {
+                    Side = CombatSide.Left,
+                    SlotIndex = slot,
+                    Status = _vein.Value,
+                    DurationInCombatRounds = -1,
+                    Caster = null
+                });
+            }
+        }
+        catch (Exception exception)
+        {
+            Plugin.ModLog.LogError($"Placing Lightning mana veins failed: {exception}");
+        }
+    }
+}
+
+/// <summary>
+/// Fire Archmage: once a day, outside battle, flame burns away one trauma (preferred) or
+/// scar completely, and the mage is Renewed. Traumas are healed through the game's own
+/// injury bookkeeping; the scar that healing leaves, and its dislike, are then removed the
+/// way the game removes scars.
+/// </summary>
+internal static class FireRenewal
+{
+    internal const string RenewedKey = "ArchmageProgression_FireRenewed";
+    internal const string CooldownKey = "ArchmageProgression_FireRenewalCooldown";
+    private static readonly List<DefId<InjuryDefinition>> InjuryScratch = new();
+    private static readonly List<DefId<CharacterStatusConfig>> StatusScratch = new();
+
+    internal static bool TryConfigure(CharacterStatusConfig definition)
+    {
+        var key = definition.Id.Key;
+        if (key == RenewedKey)
+        {
+            var bonus = Plugin.FireRenewalConviction.Value;
+            if (definition.NeedRateChanges is { } changes)
+            {
+                foreach (var change in changes)
+                {
+                    change.TargetBias = bonus / 100f;
+                }
+            }
+
+            if (definition.Description?.Text is { } text)
+            {
+                definition.Description.Text = text.Replace("{Bonus}", SchoolRanks.Number(bonus));
+            }
+
+            return true;
+        }
+
+        if (key == CooldownKey)
+        {
+            definition.DurationInGameHours = Math.Max(1f, Plugin.FireRenewalIntervalHours.Value);
+            return true;
+        }
+
+        return false;
+    }
+
+    internal static void TryRenew(Entity entity, CharacterStatusComponent statuses)
+    {
+        if (!Plugin.FireArchmageRenewal.Value || !RankPowers.HasRank(statuses, Skill.Pyromancy, archmageOnly: true) ||
+            CharacterStatusUtils.HasStatusKey(CooldownKey, statuses) || BattleUtils.TryGetBattle(entity, out _) ||
+            Simulation.Instance?.Configs?.InjuryCatalog is not { } catalog)
+        {
+            return;
+        }
+
+        string? burned = null;
+        try
+        {
+            burned = BurnTrauma(entity, statuses, catalog) ?? BurnScar(entity, statuses, catalog);
+        }
+        catch (Exception exception)
+        {
+            Plugin.ModLog.LogError($"Fire renewal failed for {EntityUtils.GetDisplayName(entity)}: {exception}");
+        }
+        finally
+        {
+            InjuryScratch.Clear();
+            StatusScratch.Clear();
+        }
+
+        if (burned is null)
+        {
+            return;
+        }
+
+        CharacterStatusUtils.AddStatusKey(CooldownKey, statuses);
+        CharacterStatusUtils.AddStatusKey(RenewedKey, statuses);
+        var name = EntityUtils.GetDisplayName(entity);
+        Simulation.Instance.LogBook?.AddLogEntry(LogCategory.Notice, entity,
+            $"{name}'s flame burned away {burned}. {name} is Renewed by Flame.");
+        Plugin.ModLog.LogInfo($"Fire renewal burned away {burned} from {name}.");
+    }
+
+    private static string? BurnTrauma(Entity entity, CharacterStatusComponent statuses, InjuryCatalog catalog)
+    {
+        if (entity.TryGetComponent<InjuryOwnerComponent>(out var owner) && owner.CurrentInjuries is { Count: > 0 } injuries)
+        {
+            InjuryScratch.AddRange(injuries.Keys);
+            foreach (var injury in InjuryScratch)
+            {
+                if (injury.GetDefinition() is not { } definition ||
+                    !catalog.TraumaStatuses.Contains(definition.StatusToApply))
+                {
+                    continue;
+                }
+
+                var name = CharacterStatusUtils.GetDisplayName(definition.StatusToApply);
+                InjuryUtils.HealInjury(entity, injury);
+                RemoveLeftoverScars(entity, statuses, definition.StatusToApply);
+                return $"the trauma {name}";
+            }
+        }
+
+        // A trauma status without an injury record (older saves): remove it directly.
+        StatusScratch.AddRange(statuses.Statuses.Keys);
+        foreach (var key in StatusScratch)
+        {
+            if (catalog.TraumaStatuses.Contains(key))
+            {
+                var name = CharacterStatusUtils.GetDisplayName(key);
+                CharacterStatusUtils.RemoveStatus(key, entity);
+                RemoveLeftoverScars(entity, statuses, key);
+                return $"the trauma {name}";
+            }
+        }
+
+        return null;
+    }
+
+    /// <summary>Healing a trauma adds its scar on removal; burn that away too.</summary>
+    private static void RemoveLeftoverScars(Entity entity, CharacterStatusComponent statuses, DefId<CharacterStatusConfig> trauma)
+    {
+        if (trauma.GetDefinition()?.AddStatusOnRemove is not { } scars)
+        {
+            return;
+        }
+
+        foreach (var scar in scars)
+        {
+            if (CharacterStatusUtils.HasStatus(scar, statuses))
+            {
+                CharacterStatusUtils.RemoveStatus(scar, entity);
+            }
+        }
+    }
+
+    private static string? BurnScar(Entity entity, CharacterStatusComponent statuses, InjuryCatalog catalog)
+    {
+        StatusScratch.Clear();
+        StatusScratch.AddRange(statuses.Statuses.Keys);
+        foreach (var key in StatusScratch)
+        {
+            if (catalog.ScarToTraumaStatusLookup.ContainsKey(key))
+            {
+                var name = CharacterStatusUtils.GetDisplayName(key);
+                CharacterStatusUtils.RemoveStatus(key, entity);
+                return $"the scar {name}";
+            }
+        }
+
+        return null;
+    }
+}
+
+/// <summary>
+/// Dark Archmage: twice a day (at midnight and noon), each Archmage of Necromancy gathers a
+/// bounty of a random dark reagent, delivered at the school entrance for haulers to store.
+/// The first tick after a load only records the current half-day, so loading never pays out.
+/// </summary>
+[HarmonyPatch(typeof(UpdateCalendarSystem), nameof(UpdateCalendarSystem.Update))]
+internal static class DarkReagentBountyPatch
+{
+    private static int _lastSlot = -1;
+    private static Simulation? _simulation;
+    private static readonly MethodInfo? CreateNearEntrance = Array.Find(
+        typeof(EntityPlacementUtils).GetMethods(BindingFlags.Public | BindingFlags.Static),
+        method => method.Name == "CreateEntitiesNearEntrance" && method.GetParameters().Length == 5);
+
+    private static bool Prepare() =>
+        Plugin.DarkArchmageBountyAmount.Value > 0 && Reagents().Length > 0;
+
+    private static string[] Reagents() =>
+        Array.FindAll(
+            Array.ConvertAll(Plugin.DarkArchmageBountyReagents.Value.Split(','), part => part.Trim()),
+            part => part.Length > 0);
+
+    [HarmonyPostfix]
+    private static void PayBounty(Simulation __0, TimeUtils.SimTime __3)
+    {
+        if (__0 is null)
+        {
+            return;
+        }
+
+        var slot = __3.Day * 2 + (TimeUtils.HourFromSimTime(__3) >= 12 ? 1 : 0);
+        if (!ReferenceEquals(__0, _simulation) || _lastSlot < 0 || slot < _lastSlot)
+        {
+            _simulation = __0;
+            _lastSlot = slot;
+            return;
+        }
+
+        if (slot == _lastSlot)
+        {
+            return;
+        }
+
+        _lastSlot = slot;
+        if (CreateNearEntrance is null)
+        {
+            return;
+        }
+
+        try
+        {
+            var reagents = Reagents();
+            foreach (var archmage in SchoolPowers.DarkArchmages)
+            {
+                if (archmage.IsDestroyed)
+                {
+                    continue;
+                }
+
+                var key = reagents[__0.Random.Next(reagents.Length)];
+                if (!ConfigData.Instance.TryGetArchetypeFromStringKey(key, out var archetype))
+                {
+                    Plugin.ModLog.LogWarning($"Reagent bounty: unknown reagent '{key}'.");
+                    continue;
+                }
+
+                var amount = Plugin.DarkArchmageBountyAmount.Value;
+                CreateNearEntrance.Invoke(null, new object?[] { archetype.EntityKey, amount, null, null, null });
+                var name = EntityUtils.GetDisplayName(archmage);
+                __0.LogBook?.AddLogEntry(LogCategory.Notice, archmage,
+                    $"{name} gathered a reagent bounty: {amount} <slink={key}>, delivered to the school entrance.");
+                Plugin.ModLog.LogInfo($"Reagent bounty: {name} gathered {amount} {key}.");
+            }
+        }
+        catch (Exception exception)
+        {
+            Plugin.ModLog.LogError($"Reagent bounty failed: {exception}");
+        }
+    }
+}
+
+/// <summary>
+/// Earth Archmage: the school may build Nexus Gateways. The buildable archetype is a copy of
+/// the Underschool gateway injected from the plugin's Content folder; the build menu hides
+/// it, through the game's own research-lock check, while the school has no Earth Archmage.
+/// </summary>
+internal static class NexusGateway
+{
+    internal const string Key = "ArchmageProgression_NexusGateway";
+}
+
+[HarmonyPatch(typeof(ConfigData), nameof(ConfigData.Load))]
+internal static class NexusGatewayCatalogPatch
+{
+    [ThreadStatic] private static bool _loadingMod;
+
+    private static bool Prepare() => Plugin.EarthArchmageNexusGateways.Value;
+
+    [HarmonyPostfix]
+    private static void Inject(ConfigData __instance, YamlParserType __1)
+    {
+        // Only real game catalogs (they hold the Broom Rack); never temporary mod catalogs.
+        if (_loadingMod || !__instance.TryGetArchetypeFromStringKey("BroomStation", out _) ||
+            __instance.TryGetArchetypeFromStringKey(NexusGateway.Key, out _))
+        {
+            return;
+        }
+
+        var root = SchoolRanks.ContentRoot;
+        if (!Directory.Exists(Path.Combine(root, "Entities")))
+        {
+            Plugin.ModLog.LogWarning($"Nexus Gateway definition not found under {root}; Earth Archmages cannot build gateways.");
+            return;
+        }
+
+        _loadingMod = true;
+        try
+        {
+            var modArchetypes = new ConfigData();
+            modArchetypes.Load(root, __1);
+            foreach (var definition in modArchetypes.AllDefinitions())
+            {
+                if (definition?.EntityKey.Key == NexusGateway.Key)
+                {
+                    __instance.Add(definition);
+                    Plugin.ModLog.LogInfo("Injected the buildable Nexus Gateway archetype.");
+                }
+            }
+        }
+        catch (Exception exception)
+        {
+            Plugin.ModLog.LogError($"Failed to inject the Nexus Gateway archetype: {exception}");
+        }
+        finally
+        {
+            _loadingMod = false;
+        }
+    }
+}
+
+[HarmonyPatch(typeof(BuildableUtils), nameof(BuildableUtils.GetBuildableArchetypes))]
+internal static class NexusGatewayBuildablePatch
+{
+    private static bool Prepare() => Plugin.EarthArchmageNexusGateways.Value;
+
+    [HarmonyPostfix]
+    private static void Include(ref List<Archetype> __0)
+    {
+        if (__0 is not null && ConfigData.Instance is { } catalog &&
+            catalog.TryGetArchetypeFromStringKey(NexusGateway.Key, out var gateway) && !__0.Contains(gateway))
+        {
+            __0.Add(gateway);
+        }
+    }
+}
+
+[HarmonyPatch(typeof(ResearchUtils), nameof(ResearchUtils.IsKeyLockedByResearch), new[] { typeof(DefId<Archetype>) })]
+internal static class NexusGatewayLockPatch
+{
+    private static bool Prepare() => Plugin.EarthArchmageNexusGateways.Value;
+
+    [HarmonyPostfix]
+    private static void LockWithoutArchmage(DefId<Archetype> __0, ref bool __result)
+    {
+        if (!__result && __0.Key == NexusGateway.Key && !SchoolPowers.EarthArchmagePresent)
+        {
+            __result = true;
+        }
+    }
+}
+
+/// <summary>
+/// Council: a boss rematch pays what the first victory paid, relic included. The rematch
+/// effigy normally rolls its own small placement list; while the council power is in force,
+/// the boss room's own reward placements (those with drops) are rolled instead.
+/// </summary>
+[HarmonyPatch(typeof(DungeonRunUtils), nameof(DungeonRunUtils.ExploreCompleted))]
+internal static class CouncilRematchRunPatch
+{
+    [ThreadStatic] internal static DungeonRun? Current;
+
+    private static bool Prepare() => Plugin.CouncilRematchArchmages.Value > 0;
+
+    [HarmonyPrefix]
+    private static void Remember(DungeonRun __0) => Current = __0;
+
+    [HarmonyFinalizer]
+    private static Exception? Forget(Exception? __exception)
+    {
+        Current = null;
+        return __exception;
+    }
+}
+
+[HarmonyPatch(typeof(UndergroundUtils), nameof(UndergroundUtils.GeneratePlacementsNearLocation))]
+internal static class CouncilRematchRewardsPatch
+{
+    private static bool Prepare() => Plugin.CouncilRematchArchmages.Value > 0;
+
+    [HarmonyPrefix]
+    private static void FirstVictoryRewards(ref List<DungeonRoomPlacement> __1)
+    {
+        if (CouncilRematchRunPatch.Current is not { } run || !SchoolPowers.Unlocked(Plugin.CouncilRematchArchmages.Value))
+        {
+            return;
+        }
+
+        try
+        {
+            if (run.RunStartEntities is not { Count: > 0 } starts || starts[0] is not { } effigy ||
+                !effigy.TryGetComponent<TransformComponent>(out var transform) ||
+                RoomUtils.FindRoom(transform) is not { } room ||
+                !RoomUtils.TryGetRoomComponent(room, out var roomComponent) ||
+                roomComponent.DungeonRoomDefId.GetDefinition() is not { IsBossRoom: true } boss ||
+                boss.Placements is null)
+            {
+                Plugin.ModLog.LogInfo("Archmage Council: rematch rewards unchanged (no boss room found).");
+                return;
+            }
+
+            var rewards = boss.Placements.FindAll(placement => placement.Drops != null);
+            if (rewards.Count > 0)
+            {
+                __1 = rewards;
+                Plugin.ModLog.LogInfo($"Archmage Council: boss rematch pays the first-victory rewards of {boss.Id.Key}.");
+            }
+        }
+        catch (Exception exception)
+        {
+            Plugin.ModLog.LogError($"Council rematch rewards failed: {exception}");
+        }
+    }
+}
+
+/// <summary>
+/// Council: scouting a faction reveals every eligible side quest instead of at most two.
+/// The cap is an inlined constant, so the two cap comparisons are rewritten to call
+/// SideQuestCap; anything unexpected leaves the method untouched.
+/// </summary>
+[HarmonyPatch(typeof(TravelQuestUtils), "HandleScoutingCompleted")]
+internal static class CouncilScoutingRevealPatch
+{
+    private static bool Prepare() => Plugin.CouncilScoutingArchmages.Value > 0;
+
+    internal static int SideQuestCap() =>
+        SchoolPowers.Unlocked(Plugin.CouncilScoutingArchmages.Value) ? int.MaxValue : 2;
+
+    [HarmonyTranspiler]
+    private static IEnumerable<CodeInstruction> RaiseCap(IEnumerable<CodeInstruction> instructions)
+    {
+        var code = new List<CodeInstruction>(instructions);
+        var matches = new List<int>();
+        for (var i = 0; i < code.Count - 1; i++)
+        {
+            if (code[i].opcode == OpCodes.Ldc_I4_2 &&
+                (code[i + 1].opcode == OpCodes.Bge || code[i + 1].opcode == OpCodes.Bge_S))
+            {
+                matches.Add(i);
+            }
+        }
+
+        if (matches.Count != 2)
+        {
+            Plugin.ModLog.LogWarning(
+                $"Scouting reveal: expected 2 side-quest caps, found {matches.Count}; leaving scouting unchanged.");
+            return code;
+        }
+
+        var cap = AccessTools.Method(typeof(CouncilScoutingRevealPatch), nameof(SideQuestCap));
+        foreach (var index in matches)
+        {
+            // Rewrite in place so any branch labels on the constant stay attached.
+            code[index].opcode = OpCodes.Call;
+            code[index].operand = cap;
+        }
+
+        return code;
+    }
+}
+
+[HarmonyPatch(typeof(TravelQuestUtils), nameof(TravelQuestUtils.NumQuestsAvailableForScouting))]
+internal static class CouncilScoutingCountPatch
+{
+    private static readonly Func<TravelQuest, IEnumerable<QuestDefinition>>? MainQuests = Delegate("GetPotentialMainQuests");
+    private static readonly Func<TravelQuest, IEnumerable<QuestDefinition>>? SideQuests = Delegate("GetPotentialSideQuests");
+
+    private static Func<TravelQuest, IEnumerable<QuestDefinition>>? Delegate(string name) =>
+        AccessTools.Method(typeof(TravelQuestUtils), name) is { } method
+            ? AccessTools.MethodDelegate<Func<TravelQuest, IEnumerable<QuestDefinition>>>(method)
+            : null;
+
+    private static bool Prepare() =>
+        Plugin.CouncilScoutingArchmages.Value > 0 && MainQuests is not null && SideQuests is not null;
+
+    [HarmonyPostfix]
+    private static void CountAll(TravelQuest __0, ref int __result)
+    {
+        if (__0 is null || !SchoolPowers.Unlocked(Plugin.CouncilScoutingArchmages.Value))
+        {
+            return;
+        }
+
+        try
+        {
+            __result = MainQuests!(__0).Count() + SideQuests!(__0).Count();
+        }
+        catch (Exception exception)
+        {
+            Plugin.ModLog.LogError($"Scouting count failed: {exception}");
+        }
+    }
+}
+
+/// <summary>
+/// Council: quests get shorter. Each Archmage rank takes a tenth off the travel still to
+/// run; at ten the party lands home on the next tick. Remaining time is cut when a quest
+/// starts and rescaled whenever the rank count changes, so every quest UI stays accurate.
+/// </summary>
+internal static class SwiftTravel
+{
+    private static Simulation? _simulation;
+    private static int _appliedCount;
+
+    internal static float Factor(int archmages) =>
+        Math.Max(0f, 1f - Math.Max(0f, Plugin.CouncilTravelCutPerArchmage.Value) * archmages);
+
+    internal static bool Enabled => Plugin.CouncilEnabled.Value && Plugin.CouncilTravelCutPerArchmage.Value > 0f;
+
+    /// <summary>The count already applied to this save's quests, or 0 before the first sweep.</summary>
+    internal static int AppliedCount =>
+        ReferenceEquals(_simulation, Simulation.Instance) ? _appliedCount : 0;
+
+    /// <summary>Called by the sweep with the current count; rescales quests in progress.</summary>
+    internal static void Update(Simulation simulation, int archmages)
+    {
+        if (!ReferenceEquals(_simulation, simulation))
+        {
+            // First sweep for this save: the saved TimeRemaining values already carry the cut.
+            _simulation = simulation;
+            _appliedCount = archmages;
+            return;
+        }
+
+        if (archmages == _appliedCount || !Enabled)
+        {
+            _appliedCount = archmages;
+            return;
+        }
+
+        var before = Factor(_appliedCount);
+        var after = Factor(archmages);
+        _appliedCount = archmages;
+        foreach (var giver in simulation.ComponentManager.AllEnumerator<QuestGiverComponent>())
+        {
+            if (giver?.ActiveTravelQuests is not { } quests)
+            {
+                continue;
+            }
+
+            foreach (var quest in quests)
+            {
+                if (quest is null || quest.State != TravelQuestState.InProgress)
+                {
+                    continue;
+                }
+
+                if (after <= 0f)
+                {
+                    quest.TimeRemaining = 0f;
+                }
+                else if (before > 0f)
+                {
+                    quest.TimeRemaining *= after / before;
+                }
+            }
+        }
+
+        Plugin.ModLog.LogInfo($"Archmage Council: quest travel now runs at {SchoolRanks.Number(after * 100f)}% of normal.");
+    }
+}
+
+[HarmonyPatch(typeof(TravelQuestUtils), nameof(TravelQuestUtils.StartQuest))]
+internal static class CouncilSwiftTravelPatch
+{
+    private static bool Prepare() => Plugin.CouncilTravelCutPerArchmage.Value > 0f;
+
+    [HarmonyPostfix]
+    private static void Shorten(TravelQuest __0)
+    {
+        if (!SwiftTravel.Enabled || __0 is null || __0.State != TravelQuestState.InProgress)
+        {
+            return;
+        }
+
+        __0.TimeRemaining *= SwiftTravel.Factor(SwiftTravel.AppliedCount);
     }
 }

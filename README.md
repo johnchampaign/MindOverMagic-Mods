@@ -259,11 +259,11 @@ config.
 | School | Adept power (level 5) | Archmage power (level 8) |
 | --- | --- | --- |
 | Manipulation (Air) | Walks twice as fast | Also flies and passes through walls and floors |
-| Pyromancy (Fire) | Cooks twice as fast; starts every battle with Counterattack for two rounds | Same as Adept |
-| Geomancy (Earth) | Starts every battle with armour equal to 50% of Max HP | Also immune to harmful combat effects |
+| Pyromancy (Fire) | Cooks twice as fast; starts every battle with Counterattack for two rounds | Also, once a day, burns away one of their own traumas or scars and is Renewed by Flame (+10 Conviction target for a day) |
+| Geomancy (Earth) | Starts every battle with armour equal to 50% of Max HP | Also immune to harmful combat effects; while the school has one, it can build Nexus Gateways |
 | Hydrokinesis (Water) | Sheds harmful combat effects at the start of every round | Same as Adept |
-| Divination (Lightning) | None yet | Casts every spell without spending mana, in battle or at school |
-| Necromancy (Dark) | Regains 10% of spell damage dealt as HP, and 25 HP whenever a foe falls | Also, ordinary needs no longer decay |
+| Divination (Lightning) | Starts every battle standing on a mana vein | Also casts every spell without spending mana, in battle or at school |
+| Necromancy (Dark) | Regains 10% of spell damage dealt as HP, and 25 HP whenever a foe falls | Also, ordinary needs no longer decay, and at midnight and noon gathers 5 of a random dark reagent |
 | Viturgy (Nature) | Every room gains +2 Luxury while the school has one; does not stack | Also +5 Conviction target to every other mage |
 
 "Harmful combat effects" uses the game's own definition: the non-beneficial
@@ -271,6 +271,15 @@ effects that the Sanctified battle terrain cleanses, such as Stunned, Blinded,
 Burns, Fear, Soaked and Jolted. Ranks, fleeing, injuries and knock-outs are
 never touched. Earth armour reuses the game's "Girded for Battle" mechanism,
 and Dark's heal on a fallen foe is the game's own heal-on-enemy-death effect.
+
+The Lightning mana vein is a real battle-terrain vein placed on the mage's
+starting slot, so it halves spell costs only while they stay on it. The Nexus
+Gateway is a buildable copy of the Underschool's teleporting gateway, found
+under Furniture > School Traversal. Built gateways teleport to one another and
+to any Underschool gateways the school has discovered. Gateways already built
+keep working if the school later loses its Earth Archmage. Dark reagent
+bounties arrive at the school entrance for haulers to put away; the reagent list
+is configurable.
 
 Flight and the Fire powers reuse the game's own effects: the legacy "Ghostly
 Movement" pathing, the cooking-speed modifier, and the battle-start Counterattack
@@ -288,8 +297,11 @@ holds enough:
 
 | Archmage ranks | Power | Effect |
 | ---: | --- | --- |
+| 1 | Rematch Spoils | Boss rematches pay what the first victory paid, relic included |
+| 1+ | Swift Travel | Each Archmage rank cuts remaining quest travel by a tenth; at 10, parties return at once |
 | 2 | Refining | The Earth, Air, Fire and Dark refineries hand back twice what they make |
 | 3 | Resolve | +10 Conviction target for every mage |
+| 4 | Open Ledgers | Scouting a faction reveals every side quest, not just two |
 | 5 | Scholarship | Teaching and learning are twice as fast |
 | 6 | Mending | Wounds (trauma injuries) close three times as fast |
 | 7 | Steady Minds | A mental break no longer leaves the mage At Death's Door |
@@ -310,15 +322,12 @@ school-wide effects; the per-skill bonuses still apply.
 
 ### Not yet implemented
 
-These powers are not built yet:
+Water Archmage's Waters of Return resurrection ritual is not built yet. The
+game has no working way to bring a dead mage back, so it needs a new revival
+routine and a ritual added to the game's own graves.
 
-- Lightning Adept's battle-start mana vein.
-- Earth Archmage's Nexus Gateways.
-- Water Archmage's Waters of Return resurrection ritual.
-- Fire Archmage's scar and trauma removal.
-- Dark Archmage's twice-daily reagent bounty.
-- The Council's boss-rematch rewards, scouting reveals and quest-travel
-  shortening. Those require separate validated game hooks and will be released only
+Swift Travel shortens quests already under way, but a quest's planned duration
+shown before it starts is the normal one. Those require separate validated game hooks and will be released only
 when each can be tested without save-file edits or base-file replacement.
 
 ### Configuration
@@ -347,6 +356,9 @@ different BepInEx subdirectories.
 
 `CharacterLevelRelics` and `FactionBalance` can be removed by deleting their
 plugin folders while the game is closed.
+
+Demolish any Nexus Gateways before removing `ArchmageProgression`; like the
+Sacrificial Altar, a built gateway is a mod-defined building in the save.
 
 `ArchmageProgression` rank and Viturgy Attunement statuses are saved with each
 mage. Before removing the plugin, set `Enabled = false` under `Rank statuses`

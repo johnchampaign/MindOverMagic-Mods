@@ -317,3 +317,32 @@
   ClearAfterBattle: true
   PercentArmorChangeOnAdd: 0.5
   ShowLargeIcon: true
+
+- Id: { Key: ArchmageProgression_FireRenewed }
+  DisplayType: Info
+  DisplayName:
+    Text: "Renewed by Flame"
+    Key: Mod.ArchmageProgression_FireRenewed.DisplayName
+  Description:
+    Text: "Flame burned away an old wound or scar. +{Bonus} <slink=Mood> target."
+    Key: Mod.ArchmageProgression_FireRenewed.Description
+  ShownInGroupRules: false
+  Beneficial: true
+  DurationInGameHours: 24
+  KeepOnAdultify: true
+  NeedRateChanges:
+  - NeedsType: Mood
+    TargetBias: 0
+
+- Id: { Key: ArchmageProgression_FireRenewalCooldown }
+  DisplayType: None
+  DisplayName:
+    Text: "Renewal Gathering"
+    Key: Mod.ArchmageProgression_FireRenewalCooldown.DisplayName
+  Description:
+    Text: "The flame is gathering strength to burn away another wound or scar."
+    Key: Mod.ArchmageProgression_FireRenewalCooldown.Description
+  ShownInGroupRules: false
+  Beneficial: true
+  DurationInGameHours: 24
+  KeepOnAdultify: true

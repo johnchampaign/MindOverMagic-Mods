@@ -33,6 +33,14 @@
   cast without spending mana. Dark Adepts regain 10% of their spell damage and
   25 HP whenever a foe falls. While the school has a Nature Adept, every room
   gains +2 Luxury.
+- Add the third group of powers. Lightning Adepts start battles standing on a
+  real mana vein. Fire Archmages burn away one of their own traumas or scars
+  once a day and are Renewed by Flame. Dark Archmages gather a dark reagent
+  bounty at midnight and noon. While the school has an Earth Archmage, it can
+  build Nexus Gateways that teleport to one another.
+- Add Council powers Rematch Spoils (1: boss rematches pay the first-victory
+  rewards, relic included), Open Ledgers (4: scouting reveals every side quest)
+  and Swift Travel (each Archmage rank cuts remaining quest travel by a tenth).
 - Add Council powers Refining (2: refineries return double), Mending (6:
   wounds close three times as fast) and Steady Minds (7: breaks no longer
   leave mages At Death's Door).

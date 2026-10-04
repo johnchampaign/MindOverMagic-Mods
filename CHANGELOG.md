@@ -33,6 +33,12 @@
   cast without spending mana. Dark Adepts regain 10% of their spell damage and
   25 HP whenever a foe falls. While the school has a Nature Adept, every room
   gains +2 Luxury.
+- Add the Waters of Return. While the school has a Water Archmage, it can build
+  a fountain whose ritual raises the mage buried in a grave in the same room.
+  The game has no native resurrection, so the mage is rebuilt the way the game
+  creates students and staff; badges, likes, relationships and statuses are
+  lost. Every check runs before anything changes, and the ritual cannot start
+  unless the revival would succeed.
 - Add the third group of powers. Lightning Adepts start battles standing on a
   real mana vein. Fire Archmages burn away one of their own traumas or scars
   once a day and are Renewed by Flame. Dark Archmages gather a dark reagent

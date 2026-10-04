@@ -58,6 +58,7 @@ public sealed class Plugin : BaseUnityPlugin
     internal static ConfigEntry<int> DarkArchmageBountyAmount { get; private set; } = null!;
     internal static ConfigEntry<string> DarkArchmageBountyReagents { get; private set; } = null!;
     internal static ConfigEntry<bool> EarthArchmageNexusGateways { get; private set; } = null!;
+    internal static ConfigEntry<bool> WaterArchmageWatersOfReturn { get; private set; } = null!;
     internal static ConfigEntry<int> CouncilRematchArchmages { get; private set; } = null!;
     internal static ConfigEntry<int> CouncilScoutingArchmages { get; private set; } = null!;
     internal static ConfigEntry<float> CouncilTravelCutPerArchmage { get; private set; } = null!;
@@ -194,6 +195,11 @@ public sealed class Plugin : BaseUnityPlugin
             "Rank powers", "Earth Archmage Nexus Gateways", true,
             "While the school has an Archmage of Geomancy (Earth), Nexus Gateways can be built. " +
             "Gateways teleport to each other. Restart required.");
+        WaterArchmageWatersOfReturn = Config.Bind(
+            "Rank powers", "Water Archmage Waters of Return", true,
+            "While the school has an Archmage of Hydrokinesis (Water), the Waters of Return " +
+            "fountain can be built. Its ritual raises the mage buried in a grave in the same " +
+            "room. Restart required.");
 
         CouncilEnabled = Config.Bind(
             "Archmage Council", "Enabled", true,
@@ -613,6 +619,12 @@ internal static class RankPowers
                 if (Plugin.WaterAdeptCleanse.Value)
                 {
                     lines.Add("Sheds harmful combat effects at the start of every battle round.");
+                }
+
+                if (archmage && Plugin.WaterArchmageWatersOfReturn.Value)
+                {
+                    lines.Add("While the school has an Archmage of Water, it can build the Waters of Return, " +
+                              "a fountain whose ritual raises a mage buried in the same room.");
                 }
 
                 break;
@@ -1058,6 +1070,15 @@ internal static class RankStatusSweepPatch
             return;
         }
 
+        try
+        {
+            MageRevival.ProcessQueue();
+        }
+        catch (Exception exception)
+        {
+            Plugin.ModLog.LogError($"Waters of Return revival failed: {exception}");
+        }
+
         // Gather first: adding a status can attach components, and mutating the
         // component manager while enumerating it would be unsafe.
         Scratch.Clear();
@@ -1356,6 +1377,9 @@ internal static class SchoolPowers
     /// <summary>Archmages of Necromancy found by the latest sweep (reagent bounty recipients).</summary>
     internal static List<Entity> DarkArchmages { get; } = new();
 
+    /// <summary>Whether the school has an Archmage of Hydrokinesis (Waters of Return available).</summary>
+    internal static bool WaterArchmagePresent { get; private set; }
+
     /// <summary>Whether the school has an Archmage of Geomancy (Nexus Gateways buildable).</summary>
     internal static bool EarthArchmagePresent { get; private set; }
 
@@ -1564,6 +1588,7 @@ internal static class SchoolPowers
         var natureArchmages = 0;
         var natureAdepts = 0;
         var earthArchmage = false;
+        var waterArchmage = false;
         DarkArchmages.Clear();
         foreach (var mage in mages)
         {
@@ -1583,6 +1608,7 @@ internal static class SchoolPowers
             }
 
             earthArchmage |= RankPowers.HasRank(statuses, Skill.Geomancy, archmageOnly: true);
+            waterArchmage |= RankPowers.HasRank(statuses, Skill.Hydrokinesis, archmageOnly: true);
             FireRenewal.TryRenew(mage, statuses);
 
             foreach (var school in SchoolRanks.Schools)
@@ -1608,6 +1634,7 @@ internal static class SchoolPowers
 
         CouncilCount = councilCount;
         EarthArchmagePresent = earthArchmage;
+        WaterArchmagePresent = waterArchmage;
         if (Simulation.Instance is { } current)
         {
             SwiftTravel.Update(current, councilCount);
@@ -2517,19 +2544,26 @@ internal static class NexusGateway
     internal const string Key = "ArchmageProgression_NexusGateway";
 }
 
+/// <summary>Buildings this plugin injects from Content/Entities.</summary>
+internal static class ModBuildables
+{
+    internal static readonly string[] Keys = { NexusGateway.Key, WatersOfReturn.Key };
+}
+
 [HarmonyPatch(typeof(ConfigData), nameof(ConfigData.Load))]
 internal static class NexusGatewayCatalogPatch
 {
     [ThreadStatic] private static bool _loadingMod;
 
-    private static bool Prepare() => Plugin.EarthArchmageNexusGateways.Value;
+    private static bool Prepare() =>
+        Plugin.EarthArchmageNexusGateways.Value || Plugin.WaterArchmageWatersOfReturn.Value;
 
     [HarmonyPostfix]
     private static void Inject(ConfigData __instance, YamlParserType __1)
     {
         // Only real game catalogs (they hold the Broom Rack); never temporary mod catalogs.
         if (_loadingMod || !__instance.TryGetArchetypeFromStringKey("BroomStation", out _) ||
-            __instance.TryGetArchetypeFromStringKey(NexusGateway.Key, out _))
+            __instance.TryGetArchetypeFromStringKey(ModBuildables.Keys[0], out _))
         {
             return;
         }
@@ -2537,7 +2571,7 @@ internal static class NexusGatewayCatalogPatch
         var root = SchoolRanks.ContentRoot;
         if (!Directory.Exists(Path.Combine(root, "Entities")))
         {
-            Plugin.ModLog.LogWarning($"Nexus Gateway definition not found under {root}; Earth Archmages cannot build gateways.");
+            Plugin.ModLog.LogWarning($"Building definitions not found under {root}; the Nexus Gateway and Waters of Return cannot be built.");
             return;
         }
 
@@ -2548,16 +2582,16 @@ internal static class NexusGatewayCatalogPatch
             modArchetypes.Load(root, __1);
             foreach (var definition in modArchetypes.AllDefinitions())
             {
-                if (definition?.EntityKey.Key == NexusGateway.Key)
+                if (definition?.EntityKey.Key is { } key && Array.IndexOf(ModBuildables.Keys, key) >= 0)
                 {
                     __instance.Add(definition);
-                    Plugin.ModLog.LogInfo("Injected the buildable Nexus Gateway archetype.");
+                    Plugin.ModLog.LogInfo($"Injected the buildable {key} archetype.");
                 }
             }
         }
         catch (Exception exception)
         {
-            Plugin.ModLog.LogError($"Failed to inject the Nexus Gateway archetype: {exception}");
+            Plugin.ModLog.LogError($"Failed to inject the mod's buildable archetypes: {exception}");
         }
         finally
         {
@@ -2569,15 +2603,23 @@ internal static class NexusGatewayCatalogPatch
 [HarmonyPatch(typeof(BuildableUtils), nameof(BuildableUtils.GetBuildableArchetypes))]
 internal static class NexusGatewayBuildablePatch
 {
-    private static bool Prepare() => Plugin.EarthArchmageNexusGateways.Value;
+    private static bool Prepare() =>
+        Plugin.EarthArchmageNexusGateways.Value || Plugin.WaterArchmageWatersOfReturn.Value;
 
     [HarmonyPostfix]
     private static void Include(ref List<Archetype> __0)
     {
-        if (__0 is not null && ConfigData.Instance is { } catalog &&
-            catalog.TryGetArchetypeFromStringKey(NexusGateway.Key, out var gateway) && !__0.Contains(gateway))
+        if (__0 is null || ConfigData.Instance is not { } catalog)
         {
-            __0.Add(gateway);
+            return;
+        }
+
+        foreach (var key in ModBuildables.Keys)
+        {
+            if (catalog.TryGetArchetypeFromStringKey(key, out var archetype) && !__0.Contains(archetype))
+            {
+                __0.Add(archetype);
+            }
         }
     }
 }
@@ -2585,14 +2627,24 @@ internal static class NexusGatewayBuildablePatch
 [HarmonyPatch(typeof(ResearchUtils), nameof(ResearchUtils.IsKeyLockedByResearch), new[] { typeof(DefId<Archetype>) })]
 internal static class NexusGatewayLockPatch
 {
-    private static bool Prepare() => Plugin.EarthArchmageNexusGateways.Value;
+    private static bool Prepare() =>
+        Plugin.EarthArchmageNexusGateways.Value || Plugin.WaterArchmageWatersOfReturn.Value;
 
     [HarmonyPostfix]
     private static void LockWithoutArchmage(DefId<Archetype> __0, ref bool __result)
     {
-        if (!__result && __0.Key == NexusGateway.Key && !SchoolPowers.EarthArchmagePresent)
+        if (__result)
         {
-            __result = true;
+            return;
+        }
+
+        if (__0.Key == NexusGateway.Key)
+        {
+            __result = !Plugin.EarthArchmageNexusGateways.Value || !SchoolPowers.EarthArchmagePresent;
+        }
+        else if (__0.Key == WatersOfReturn.Key)
+        {
+            __result = !Plugin.WaterArchmageWatersOfReturn.Value || !SchoolPowers.WaterArchmagePresent;
         }
     }
 }
@@ -2821,5 +2873,546 @@ internal static class CouncilSwiftTravelPatch
         }
 
         __0.TimeRemaining *= SwiftTravel.Factor(SwiftTravel.AppliedCount);
+    }
+}
+
+/// <summary>
+/// Water Archmage: the Waters of Return fountain. Its ritual raises the mage buried in a
+/// grave in the same room. The fountain is hidden from the build menu until the school has
+/// an Archmage of Hydrokinesis; the ritual is disabled, with the reason shown on the button,
+/// until both an Archmage of Water exists and a qualifying grave shares the fountain's room.
+/// </summary>
+internal static class WatersOfReturn
+{
+    internal const string Key = "ArchmageProgression_WatersOfReturn";
+
+    internal sealed class Target
+    {
+        internal Entity Fountain = null!;
+        internal Entity Grave = null!;
+        internal Entity Corpse = null!;
+        internal Entity Dead = null!;
+        internal Entity? Officiant;
+    }
+
+    internal static bool IsFountain(RitualSiteComponent? site) =>
+        site?.Entity is { IsDestroyed: false } entity && entity.EntityKey.Key == Key;
+
+    /// <summary>
+    /// A grave in the fountain's room whose buried mage can be raised; failing that, the first
+    /// grave holding a dead mage (so the caller can report why), or null if there is none.
+    /// </summary>
+    internal static Target? FindTarget(Entity fountain) => FindTarget(fountain, out _);
+
+    internal static Target? FindTarget(Entity fountain, out string? reason)
+    {
+        reason = null;
+        Target? fallback = null;
+        string? fallbackReason = null;
+        if (Simulation.Instance?.ComponentManager is not { } components)
+        {
+            return null;
+        }
+
+        foreach (var grave in components.InSchoolEnumerator<GraveComponent>())
+        {
+            if (grave?.Entity is not { IsDestroyed: false } graveEntity ||
+                !RoomUtils.InSameRoom(fountain, graveEntity) ||
+                grave.GetCorpseEntity() is not { IsDestroyed: false } corpse ||
+                !corpse.TryGetComponent<CorpseComponent>(out var corpseComponent) ||
+                corpseComponent.DeadEntity is not { IsDestroyed: false } dead ||
+                !dead.HasComponent<CharacterComponent>() || !dead.HasComponent<DeadComponent>())
+            {
+                continue;
+            }
+
+            var target = new Target { Fountain = fountain, Grave = graveEntity, Corpse = corpse, Dead = dead };
+            var problem = MageRevival.CannotRevive(target);
+            if (problem is null)
+            {
+                return target;
+            }
+
+            if (fallback is null)
+            {
+                fallback = target;
+                fallbackReason = problem;
+            }
+        }
+
+        reason = fallbackReason;
+        return fallback;
+    }
+}
+
+[HarmonyPatch(typeof(RitualSiteComponent), nameof(RitualSiteComponent.IsRitualValid))]
+internal static class WatersOfReturnValidityPatch
+{
+    private static bool Prepare() => Plugin.WaterArchmageWatersOfReturn.Value;
+
+    [HarmonyPostfix]
+    private static void RequireTarget(RitualSiteComponent __instance, ref string __0, ref bool __result)
+    {
+        if (!__result || !WatersOfReturn.IsFountain(__instance))
+        {
+            return;
+        }
+
+        try
+        {
+            if (!SchoolPowers.WaterArchmagePresent)
+            {
+                __result = false;
+                __0 = "<color=#F96337>Requires an Archmage of Water in the school.</color>";
+            }
+            else if (WatersOfReturn.FindTarget(__instance.Entity, out var reason) is null)
+            {
+                __result = false;
+                __0 = "<color=#F96337>No buried mage lies in a grave in this fountain's room.</color>";
+            }
+            else if (reason is not null)
+            {
+                __result = false;
+                __0 = $"<color=#F96337>{reason}</color>";
+            }
+        }
+        catch (Exception exception)
+        {
+            Plugin.ModLog.LogError($"Waters of Return validity check failed: {exception}");
+        }
+    }
+}
+
+[HarmonyPatch(typeof(RitualSiteComponent), nameof(RitualSiteComponent.RitualCompleted))]
+internal static class WatersOfReturnCompletionPatch
+{
+    private static bool Prepare() => Plugin.WaterArchmageWatersOfReturn.Value;
+
+    [HarmonyPrefix]
+    private static void Capture(RitualSiteComponent __instance, ref WatersOfReturn.Target? __state)
+    {
+        __state = null;
+        if (!WatersOfReturn.IsFountain(__instance))
+        {
+            return;
+        }
+
+        try
+        {
+            __state = WatersOfReturn.FindTarget(__instance.Entity, out var reason);
+            if (reason is not null)
+            {
+                Plugin.ModLog.LogWarning($"Waters of Return completed, but its target cannot be raised: {reason}");
+            }
+
+            if (__state is null)
+            {
+                Plugin.ModLog.LogWarning("Waters of Return completed, but no buried mage was found in the fountain's room.");
+                return;
+            }
+
+            foreach (var attendee in __instance.RitualAttendees)
+            {
+                if (attendee.Item2 == 0)
+                {
+                    __state.Officiant = attendee.Item1;
+                    break;
+                }
+            }
+        }
+        catch (Exception exception)
+        {
+            __state = null;
+            Plugin.ModLog.LogError($"Waters of Return could not capture its target: {exception}");
+        }
+    }
+
+    [HarmonyPostfix]
+    private static void Revive(WatersOfReturn.Target? __state)
+    {
+        if (__state is null)
+        {
+            return;
+        }
+
+        if (__state.Dead.IsDestroyed || __state.Corpse.IsDestroyed || !__state.Dead.HasComponent<DeadComponent>())
+        {
+            Plugin.ModLog.LogWarning("Waters of Return: the buried mage changed during the ritual; nothing was revived.");
+            return;
+        }
+
+        // Revive on the next sweep rather than inside the ritual's completion, which may run
+        // while the game is iterating components (adds and removes would be deferred).
+        MageRevival.Queue(__state);
+    }
+}
+
+/// <summary>
+/// Brings a dead, buried mage back as a working mage. Death keeps the character entity as an
+/// inert record (name, appearance, level, skills, role and wand specifier) and strips almost
+/// everything else, so this rebuilds the rest the way the game's own creation paths do.
+/// Every check runs before anything changes; from the first rebuilt component onward the
+/// process cannot be undone, so it only starts when all checks pass.
+/// </summary>
+internal static class MageRevival
+{
+    // The placement overload sets include System.Numerics.Vector3 variants this plugin cannot
+    // reference, so the two Vector3-free overloads are bound by parameter types.
+    private static readonly MethodInfo? PlaceNear = AccessTools.Method(
+        typeof(EntityPlacementUtils), "EntityPlacementRequest",
+        new[] { typeof(Entity), typeof(EntityPlacementRequestData.Mode), typeof(float), typeof(Cell) });
+
+    private static readonly MethodInfo? PlaceDeferred = AccessTools.Method(
+        typeof(EntityPlacementUtils), "DeferredEntityPlacementRequest",
+        new[] { typeof(Entity), typeof(EntityPlacementRequestData.Mode), typeof(Cell) });
+
+    private sealed class Plan
+    {
+        internal Entity Mage = null!;
+        internal Entity Corpse = null!;
+        internal Entity Grave = null!;
+        internal Archetype Archetype = null!;
+        internal WandSpecifier Wand = null!;
+        internal FactionDefinition? Faction;
+        internal Cell GraveCell = null!;
+        internal bool IsStaff;
+        internal bool IsApprentice;
+    }
+
+    /// <summary>Why the target cannot be revived, or null when it can.</summary>
+    internal static string? CannotRevive(WatersOfReturn.Target target) => Prepare(target, out _);
+
+    private static string? Prepare(WatersOfReturn.Target target, out Plan plan)
+    {
+        plan = new Plan { Mage = target.Dead, Corpse = target.Corpse, Grave = target.Grave };
+        var mage = target.Dead;
+        if (mage.IsDestroyed || !mage.TryGetComponent<CharacterComponent>(out var character) ||
+            !mage.HasComponent<DeadComponent>() || !mage.HasComponent<NotInSchoolComponent>())
+        {
+            return "The buried mage's record is incomplete.";
+        }
+
+        if (mage.HasComponent<GhostComponent>() || mage.HasComponent<SchoolFounderComponent>())
+        {
+            return "The founder's spirit cannot be called back this way.";
+        }
+
+        if (mage.TryGetConfig<CharacterConfig>(out var characterConfig) && characterConfig.CreateFakeData)
+        {
+            return "The buried mage's record is incomplete.";
+        }
+
+        if (character.Graduated || character.Expelled || character.Retired)
+        {
+            return "This mage left the school before they died.";
+        }
+
+        var key = mage.EntityKey.Key;
+        plan.IsStaff = key == "Adult";
+        if (key != "Student" && !plan.IsStaff)
+        {
+            return "Only students and staff can be raised.";
+        }
+
+        if (plan.IsStaff && !mage.HasComponent<StaffComponent>())
+        {
+            return "The buried mage's record is incomplete.";
+        }
+
+        if (mage.EntityKey.GetDefinition() is not { Configs: not null } archetype)
+        {
+            return "The buried mage's record is incomplete.";
+        }
+
+        plan.Archetype = archetype;
+        if (!mage.TryGetComponent<RoleComponent>(out var role) || role.WandSpecifier is not { } wand ||
+            wand.RoleData is null || wand.WandKey.GetDefinition() is not { } wandArchetype ||
+            !HasConfig<WandConfig>(wandArchetype))
+        {
+            return "The buried mage's wand cannot be remade.";
+        }
+
+        plan.Wand = wand;
+        plan.IsApprentice = !plan.IsStaff && role.ApprenticeSkill != Skill.None;
+        plan.Faction = character.FactionId.GetDefinition();
+        if (!plan.IsStaff && plan.Faction is null)
+        {
+            return "The buried mage's record is incomplete.";
+        }
+
+        if (!target.Corpse.TryGetComponent<CorpseComponent>(out var corpse) || corpse.DeadEntity != mage ||
+            !target.Grave.TryGetComponent<GraveComponent>(out var grave) || grave.GetCorpseEntity() != target.Corpse ||
+            !target.Grave.TryGetComponent<StorageComponent>(out _) ||
+            target.Grave.HasComponent<NotInSchoolComponent>() ||
+            !target.Grave.TryGetComponent<TransformComponent>(out var graveTransform) || graveTransform.Cell is not { } cell)
+        {
+            return "The grave cannot be opened.";
+        }
+
+        plan.GraveCell = cell;
+        if (PlaceNear is null || PlaceDeferred is null)
+        {
+            return "The fountain cannot find a way to place the mage (game update?).";
+        }
+
+        foreach (var ghost in GhostsOf(mage))
+        {
+            if (ghost.HasComponent<StaffComponent>())
+            {
+                return "This mage's ghost serves the school and cannot be called back.";
+            }
+        }
+
+        return null;
+    }
+
+    private static bool HasConfig<T>(Archetype archetype) where T : Config
+    {
+        foreach (var config in archetype.Configs)
+        {
+            if (config is T)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static List<Entity> GhostsOf(Entity mage)
+    {
+        var ghosts = new List<Entity>();
+        if (Simulation.Instance?.ComponentManager is { } components)
+        {
+            foreach (var ghost in components.AllEnumerator<GhostComponent>())
+            {
+                if (ghost?.Entity is { IsDestroyed: false } entity && ghost.DeadEntity == mage)
+                {
+                    ghosts.Add(entity);
+                }
+            }
+        }
+
+        return ghosts;
+    }
+
+    private static readonly List<WatersOfReturn.Target> Pending = new();
+
+    internal static void Queue(WatersOfReturn.Target target)
+    {
+        Pending.Add(target);
+        Plugin.ModLog.LogInfo("Waters of Return completed; the revival will run on the next school sweep.");
+    }
+
+    /// <summary>Run queued revivals. Called from the school sweep, outside any game iteration.</summary>
+    internal static void ProcessQueue()
+    {
+        if (Pending.Count == 0)
+        {
+            return;
+        }
+
+        var batch = Pending.ToArray();
+        Pending.Clear();
+        foreach (var target in batch)
+        {
+            TryRevive(target);
+        }
+    }
+
+    internal static bool TryRevive(WatersOfReturn.Target target)
+    {
+        var reason = Prepare(target, out var plan);
+        var name = target.Dead.IsDestroyed ? "the buried mage" : EntityUtils.GetDisplayName(target.Dead);
+        if (reason is not null)
+        {
+            Plugin.ModLog.LogWarning($"Waters of Return could not raise {name}: {reason}");
+            Simulation.Instance?.LogBook?.AddLogEntry(LogCategory.Notice, target.Fountain,
+                $"The Waters of Return could not raise {name}: {reason}");
+            return false;
+        }
+
+        var simulation = Simulation.Instance;
+        var random = simulation.CharacterGenerationRandom;
+
+        // 1. The wand: the only step that can still be rolled back.
+        var wandEntity = simulation.EntityFactory.CreateEntity(plan.Wand.WandKey, false);
+        if (wandEntity is null || !wandEntity.TryGetComponent<WandComponent>(out var wand) ||
+            !wandEntity.TryGetComponent<StorableComponent>(out var wandStorable))
+        {
+            wandEntity?.Destroy();
+            Plugin.ModLog.LogWarning($"Waters of Return could not raise {name}: the wand could not be remade.");
+            return false;
+        }
+
+        wand.WandSpecifier = plan.Wand;
+
+        // 2. From here on nothing can be undone.
+        var mage = plan.Mage;
+        try
+        {
+            RebuildComponents(mage, plan);
+            mage.RemoveComponentsOfType<DeadComponent>();
+            if (mage.TryGetComponent<LeaveSchoolImmediateErrand>(out var leaving))
+            {
+                leaving.Destroy();
+            }
+
+            mage.GetComponent<CharacterComponent>().ExitTime = default;
+
+            var statuses = mage.GetComponent<CharacterStatusComponent>();
+            if (plan.Faction?.FactionTraits is { } factionTraits)
+            {
+                foreach (var trait in factionTraits)
+                {
+                    CharacterStatusUtils.AddStatus(trait, statuses);
+                }
+            }
+
+            if (plan.Wand.RoleData.Traits is { } roleTraits)
+            {
+                foreach (var trait in roleTraits)
+                {
+                    CharacterStatusUtils.AddStatus(trait, statuses);
+                }
+            }
+
+            CharacterStatusUtils.AddStatusKey("InIndoors", statuses);
+            CharacterStatusUtils.AddStatusKey("WeatherStatus_Fair", statuses);
+            CharacterStatusUtils.UpdateDoubtStatuses(simulation.DifficultySettings.DoubtStatusEffect, statuses);
+            if (plan.IsApprentice)
+            {
+                CharacterStatusUtils.RemoveStatusKey("IsInitiate", mage);
+                CharacterStatusUtils.AddStatusKey("IsApprentice", mage, null);
+            }
+            else if (plan.IsStaff)
+            {
+                CharacterStatusUtils.AddStatusKey("IsStaff", mage, null);
+            }
+
+            if (mage.TryGetComponent<ArtifactEquipperComponent>(out var equipper))
+            {
+                equipper.GenerateEquipSlots(random);
+            }
+
+            if (!plan.IsStaff && mage.TryGetComponent<BadgeOwnerComponent>(out var badges))
+            {
+                badges.GenerateBadges(plan.Wand.WandTier, random);
+            }
+
+            if (plan.Faction?.StartingLikeType is { } likes)
+            {
+                foreach (var like in likes)
+                {
+                    LikeUtils.AddTypedLike(like, mage, random);
+                }
+            }
+
+            StorageUtils.AddToStorage(mage.GetComponent<StorageComponent>(), wandStorable);
+            CharacterUtils.RandomizeStartingNeeds(mage);
+            NeedsUtils.SetWandNeeds(mage, wand, simulation.DifficultySettings.WandNeedEffect);
+            DifficultyUtils.AddDifficultyStatuses(simulation.DifficultySettings, mage);
+            CharacterGenUtils.AllocateStatGrowthOffsets(mage, random);
+            mage.GetComponent<SkillsComponent>()?.InvalidateSkillsCache();
+            mage.GetComponent<HitPointComponent>()?.ResetAmount();
+            mage.GetComponent<ManaComponent>()?.ResetAmount();
+
+            // 3. Groups, then back into the school and into the world beside the grave.
+            GroupUtils.AddToGroup(mage, GroupType.All);
+            if (plan.IsStaff)
+            {
+                GroupUtils.AddToGroup(mage, GroupType.AllStaff);
+            }
+            else
+            {
+                if (plan.Faction is not null && GroupUtils.AddFactionGroup(plan.Faction) is { } factionGroup)
+                {
+                    GroupUtils.AddToGroup(mage, factionGroup, false);
+                }
+
+                GroupUtils.AddToGroup(mage, GroupType.AllStudents);
+                GroupUtils.AddToGroup(mage, plan.IsApprentice ? GroupType.AllApprentices : GroupType.AllInitiates);
+            }
+
+            GroupUtils.AddToIndividualGroup(mage);
+            mage.GetComponent<NotInSchoolComponent>()?.Destroy();
+            PlaceNear?.Invoke(null, new object[] { mage, EntityPlacementRequestData.Mode.Nearby, 180f, plan.GraveCell });
+            if (!mage.HasComponent<TransformComponent>())
+            {
+                PlaceDeferred?.Invoke(null, new object?[] { mage, EntityPlacementRequestData.Mode.PathToEntryPoint, null });
+            }
+
+            simulation.PathingManager?.RebuildPathEstimateForEntity(mage);
+            GroupUtils.UpdateGroupJobTypePriority(mage, true);
+            GroupUtils.UpdateGroupDisallowedMealsDefaults(mage, true);
+            UpdateGroupMembersSystem.ForceUpdateCustomGroupMembers(simulation);
+
+            // 4. Empty the grave and lay the ghosts to rest.
+            EntityUtils.ForceReleaseOnClaims(plan.Corpse);
+            GroupUtils.RemoveFromAllGroups(plan.Corpse);
+            StorageUtils.RemoveFromStorage(plan.Grave.GetComponent<StorageComponent>(), plan.Corpse);
+            foreach (var ghost in GhostsOf(mage))
+            {
+                GroupUtils.RemoveFromAllGroups(ghost);
+                ghost.Destroy();
+            }
+        }
+        catch (Exception exception)
+        {
+            Plugin.ModLog.LogError(
+                $"Waters of Return failed part-way through raising {name}. The mage may be incomplete; " +
+                $"please report this with the log. {exception}");
+            return false;
+        }
+
+        var officiant = target.Officiant is { IsDestroyed: false } o ? EntityUtils.GetDisplayName(o) : "An Archmage of Water";
+        simulation.LogBook?.AddLogEntry(LogCategory.Important, mage,
+            $"{officiant} called {name} back through the Waters of Return.");
+        Plugin.ModLog.LogInfo($"Waters of Return raised {name}.");
+        return true;
+    }
+
+    /// <summary>
+    /// Add one component per archetype config, as EntityFactory.CreateEntity does, skipping
+    /// any component type the mage kept through death.
+    /// </summary>
+    private static void RebuildComponents(Entity mage, Plan plan)
+    {
+        var kept = new HashSet<Type>(mage.GetComponents().Keys);
+        foreach (var config in plan.Archetype.Configs)
+        {
+            if (config is null || config.SkipComponentCreation || config.NewComponent() is not { } component ||
+                kept.Contains(component.GetType()))
+            {
+                continue;
+            }
+
+            mage.AddComponent<Component>(component);
+            if (component is BaseErrandComponent errand && errand.IsExclusiveWhenEnabled && !errand.PlayerDisabled &&
+                !mage.HasComponent<ExclusiveErrandComponent>())
+            {
+                ErrandUtils.MakeErrandExclusive(errand, (errand as IPlacemarkerCreator)?.Placemarker);
+            }
+        }
+
+        if (!plan.IsStaff)
+        {
+            if (!mage.HasComponent<StudentComponent>())
+            {
+                mage.AddComponent(new StudentComponent());
+            }
+
+            if (plan.IsApprentice)
+            {
+                if (!mage.HasComponent<ApprenticeComponent>())
+                {
+                    mage.AddComponent(new ApprenticeComponent());
+                }
+            }
+            else if (!mage.HasComponent<InitiateComponent>())
+            {
+                mage.AddComponent(new InitiateComponent());
+            }
+        }
     }
 }

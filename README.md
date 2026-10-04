@@ -261,7 +261,7 @@ config.
 | Manipulation (Air) | Walks twice as fast | Also flies and passes through walls and floors |
 | Pyromancy (Fire) | Cooks twice as fast; starts every battle with Counterattack for two rounds | Also, once a day, burns away one of their own traumas or scars and is Renewed by Flame (+10 Conviction target for a day) |
 | Geomancy (Earth) | Starts every battle with armour equal to 50% of Max HP | Also immune to harmful combat effects; while the school has one, it can build Nexus Gateways |
-| Hydrokinesis (Water) | Sheds harmful combat effects at the start of every round | Same as Adept |
+| Hydrokinesis (Water) | Sheds harmful combat effects at the start of every round | Also, while the school has one, it can build the Waters of Return fountain |
 | Divination (Lightning) | Starts every battle standing on a mana vein | Also casts every spell without spending mana, in battle or at school |
 | Necromancy (Dark) | Regains 10% of spell damage dealt as HP, and 25 HP whenever a foe falls | Also, ordinary needs no longer decay, and at midnight and noon gathers 5 of a random dark reagent |
 | Viturgy (Nature) | Every room gains +2 Luxury while the school has one; does not stack | Also +5 Conviction target to every other mage |
@@ -322,9 +322,32 @@ school-wide effects; the per-skill bonuses still apply.
 
 ### Not yet implemented
 
-Water Archmage's Waters of Return resurrection ritual is not built yet. The
-game has no working way to bring a dead mage back, so it needs a new revival
-routine and a ritual added to the game's own graves.
+### Waters of Return
+
+While the school has an Archmage of Water, the Waters of Return fountain
+appears under Furniture > Rituals and Relics. It uses the Water Apprentice
+Fountain's model. Its ritual needs an Archmage of Water as officiant and costs
+1 Mana Crystal, 50 Phoenix Flowers and 54 Gnosis Shards. It raises the mage
+buried in a grave **in the same room** as the fountain, so build both inside a
+walled room; a grave outdoors never counts.
+
+The ritual button stays disabled, with the reason in its tooltip, until a
+raisable mage lies in a grave in that room. That way the ingredients are never
+spent on a mage who cannot return. The founder, a ghost who serves as staff,
+and mages who graduated, retired or were expelled before dying cannot be
+raised.
+
+The base game has no working resurrection, so the revival rebuilds the mage the
+way the game creates students and staff. The mage keeps their name,
+appearance, level, skills, role and wand type. These do not come back:
+
+- badges and badge progress, likes, relationships and any statuses they had;
+- stat-growth offsets and relic-slot layout, which are rolled again;
+- bed, desk and group assignments, and equipped relics, which must be set again;
+- the mourning and student-death penalties other mages received.
+
+The revival runs a moment after the ritual ends. The log book records it, or,
+if something prevents it, records why.
 
 Swift Travel shortens quests already under way, but a quest's planned duration
 shown before it starts is the normal one. Those require separate validated game hooks and will be released only
@@ -357,8 +380,10 @@ different BepInEx subdirectories.
 `CharacterLevelRelics` and `FactionBalance` can be removed by deleting their
 plugin folders while the game is closed.
 
-Demolish any Nexus Gateways before removing `ArchmageProgression`; like the
-Sacrificial Altar, a built gateway is a mod-defined building in the save.
+Demolish any Nexus Gateways and Waters of Return fountains before removing
+`ArchmageProgression`; like the Sacrificial Altar, they are mod-defined
+buildings in the save. Mages raised by the fountain stay ordinary mages after
+uninstalling.
 
 `ArchmageProgression` rank and Viturgy Attunement statuses are saved with each
 mage. Before removing the plugin, set `Enabled = false` under `Rank statuses`

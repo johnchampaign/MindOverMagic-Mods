@@ -653,6 +653,12 @@ Include documentation and a license at the ZIP root if useful. Exclude:
 - local configuration, saves, logs, and test tools;
 - source art that the runtime does not use.
 
+When a repository contains independent modules, publish one directly
+extractable ZIP per module as well as an optional all-modules convenience ZIP.
+Do not make players extract a collection and manually delete plugins they did
+not choose. Use an identical <code>BepInEx/plugins/&lt;Module&gt;</code> layout in
+every archive so individual packages can be safely combined.
+
 Build Release configuration, stage into a clean directory, compress that
 directory, list the archive entries, and calculate a SHA-256 checksum. After
 uploading a release, download the hosted asset and compare its checksum to the

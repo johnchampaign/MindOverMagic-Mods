@@ -43,12 +43,22 @@ new version of these plugins.
 1. Install BepInEx 5 into the Mind Over Magic directory. This is the directory
    containing `mindovermagic.exe`.
 2. Start the game once and close it, allowing BepInEx to create its folders.
-3. Download the newest <code>MindOverMagic-Mods-v&lt;version&gt;.zip</code>
-   from the latest GitHub release.
-4. Extract the ZIP into the Mind Over Magic directory. Merge the included
+3. Download either the **All Modules** ZIP or just the individual module ZIPs
+   you want from the latest GitHub release. Each ZIP is independently
+   extractable.
+4. Extract every chosen ZIP into the Mind Over Magic directory. Merge the included
    `BepInEx` folder when prompted.
-5. Delete any module folders you do not want from `BepInEx\plugins`.
-6. Start the game normally through Steam.
+5. Start the game normally through Steam.
+
+The release asset names are:
+
+| Asset | Contents |
+| --- | --- |
+| `MindOverMagic-Mods-v<version>.zip` | All modules (convenience option) |
+| `MindOverMagic-CharacterLevelRelics-v<version>.zip` | Character Level Relics only |
+| `MindOverMagic-FactionBalance-v<version>.zip` | Faction Balance only |
+| `MindOverMagic-SacrificialAltar-v<version>.zip` | Sacrificial Altar only |
+| `MindOverMagic-ArchmageProgression-v<version>.zip` | Archmage Progression only |
 
 The resulting layout is:
 

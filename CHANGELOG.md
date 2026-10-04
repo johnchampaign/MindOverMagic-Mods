@@ -1,5 +1,11 @@
 # Changelog
 
+## Bundle v1.2.1 - 2026-10-03
+
+- Publish a standalone directly extractable ZIP for each module, alongside the
+  existing all-modules convenience ZIP. Players can now install exactly the
+  modules they choose without deleting unwanted plugin folders.
+
 ## Bundle v1.2.0 - 2026-10-03
 
 ### Archmage Progression 0.1.0

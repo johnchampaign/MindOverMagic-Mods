@@ -153,10 +153,24 @@ book and still never be recognized.
 
 Three guards matter:
 
-- A static <code>_injected</code> flag makes the operation idempotent.
+- Idempotence keyed on content: skip when the live catalog already contains the
+  plugin's key. A static <code>_injected</code> flag is weaker, because another
+  plugin's temporary catalog can consume the one chance it allows.
 - A thread-static <code>_loadingMod</code> flag prevents recursive patches when
   the temporary catalog calls the same <code>Load</code> method.
 - A <code>try/finally</code> always clears the recursion flag.
+
+Load the temporary catalog through the <em>unpatched</em> generic base loader,
+not the derived catalog's patched <code>Load</code>. Harmony patches apply to
+every caller, so calling the patched method on a temporary catalog runs every
+other installed plugin's postfix against it. In this repository that surfaced
+as the Archmage Progression loader receiving the Sacrificed Mage status and the
+Sacrificial Altar guard being tripped by a catalog that was about to be thrown
+away. The fix is a non-virtual open delegate created with
+<code>AccessTools.MethodDelegate(method, null, virtualCall: false)</code> on
+<code>DefinitionCatalog&lt;T&gt;.Load</code>, plus a key-prefix filter on
+<code>AllDefinitions()</code> so only definitions the plugin authored are added
+to the live catalog.
 
 Do not assume all catalogs have identical finalization. Inspect and test each
 catalog separately.
@@ -552,6 +566,102 @@ Check the units of need modifiers carefully. In this build, a
 <code>TargetBias</code> of <code>-0.10</code> represents the requested
 -10 Conviction effect. Do not assume UI points and serialized decimals use the
 same scale in every system.
+
+### Informational rank badges as persistent statuses
+
+The Archmage Progression module shows a mage's per-school rank without any
+custom UI. Each rank is an ordinary <code>CharacterStatusConfig</code> with
+<code>DisplayType: Alert</code>, <code>Persistent: true</code>,
+<code>Beneficial: true</code>, <code>KeepOnAdultify: true</code>, and no
+mechanical fields. The statuses survive saves and appear in the selected-mage
+summary under the portrait with no view code.
+
+The display type decides whether a status is visible at all. This was verified
+from the view code after a first version using <code>Info</code> was invisible
+in play:
+
+| Surface | What it lists |
+| --- | --- |
+| Selected-mage summary under the portrait | <code>Alert</code> and <code>Emergency</code> only |
+| Status &amp; Conviction panel | Only statuses with a Conviction (Mood) need-rate change |
+| Mage Sheet | Traumas and scars only |
+| Red "!!" on the mage bar | <code>Emergency</code> only |
+| Top-left alert list | Only statuses with <code>AlertData.Details</code> |
+
+So <code>Info</code> statuses with no Conviction effect, including the base
+game's own display bonuses, are not shown anywhere. <code>Alert</code> without
+<code>AlertData</code> is the quiet way to make a status visible.
+
+Lessons from that implementation:
+
+- Status descriptions are static text. <code>ParseNameAndDescription</code>
+  only substitutes <code>[TargetEntity]</code>, so values that depend on the
+  plugin's config must be written into <code>Description.Text</code> at
+  injection time. Put placeholder tokens in the YAML and replace them in the
+  catalog <code>Load</code> postfix after the temporary catalog has parsed the
+  file.
+- <code>LogString</code> with <code>"{0} earned the title of {1}"</code> is a
+  base-game phrasing that reads naturally for a rank; set
+  <code>LogCategory: Notice</code> so it lands in the log book quietly.
+- Evaluate ranks from <code>SkillsComponent.GetRawSkillValue</code> when the
+  badge is meant to reflect training rather than gear; the modified value
+  includes equipment and temporary statuses.
+- Two hooks cover every path: a postfix on
+  <code>SkillsComponent.ModifySkillValue</code> for immediate response, and a
+  postfix on <code>UpdateMaxedSkillStatusSystem.Update</code> for a periodic
+  sweep that fixes up existing saves and config changes. Gather components into
+  a list with <code>ComponentManager.InSchoolGather</code> before mutating
+  statuses; adding a status can attach components.
+- Always inject the definitions, even when the feature is switched off, and let
+  the sweep remove the badges. That gives players a clean path to strip the
+  plugin's statuses from a save before uninstalling.
+- Filter the temporary catalog's <code>AllDefinitions()</code> by your own key
+  prefix before adding to the live catalog. Only definitions you authored should
+  ever be able to shadow base-game entries.
+
+### Native stat breakdowns and Conviction modifiers
+
+Two native surfaces make a mod's numbers visible without custom UI:
+
+- <code>View.GameTextLinkHandler.HandleEntitySpecificKeyword(keyword, entity, text)</code>
+  builds the per-mage hover for <code>HP</code>, <code>Mana</code>,
+  <code>CombatStat_CombatSpeed</code>, <code>CombatStat_DamageBonus</code> and
+  <code>DeathSave</code>, appending <code>"
+{source}: +{amount}"</code> lines.
+  The Mage Sheet LEVEL icons call it with <code>MaxHP</code>,
+  <code>MaxMana</code>, <code>CombatStat_DamageBonus</code> and
+  <code>CombatStat_CombatSpeed</code>. A postfix that appends lines in the same
+  form reads as part of the game's own breakdown.
+  <code>GameHPWidget.HandleTooltip</code> and
+  <code>GameManaWidget.HandleTooltip</code> build the selected-mage bar hovers.
+- A status with a <code>NeedRateChanges</code> entry for
+  <code>NeedsType: Mood</code> shows in the Status &amp; Conviction panel with
+  its <code>TargetBias</code> as a signed Conviction value. A per-level bonus can
+  be one status per level with the bias filled from config at injection.
+
+These UI methods are private, and View code changes more than simulation code.
+Resolve them by name at runtime with <code>AccessTools</code>, naming the
+<code>View</code> assembly so it loads on demand, and give each patch class a
+<code>Prepare()</code> that returns false when the target is missing. Harmony
+then skips only that patch. A <code>typeof</code> target that disappears would
+instead make <code>PatchAll</code> throw and take the whole plugin down.
+
+### Need fill rate is not need decay
+
+<code>CharacterStatusUtils.GetNeedRateModifier</code> sounds like a decay
+multiplier, but the game uses it only when a need is <em>satisfied</em>: eating,
+sleeping and recreation multiply their gain by it. The base game's statuses
+that set <code>NeedRateModifier_&lt;Need&gt;</code> all read "need fills faster".
+Reducing it is a penalty. Archmage Progression 0.1.0 shipped that mistake.
+
+Decay happens inside <code>UpdateNeedsSystem</code>: each tick subtracts
+<code>dt / (45 * FullDecaySimHours)</code> from the need's base config, plus one
+term per status <code>NeedRateChanges</code> entry. There is no per-entity
+multiplier. To slow decay exactly, record the affected needs in a prefix on the
+system's iterator <code>MoveNext</code> (resolve it with
+<code>AccessTools.EnumeratorMoveNext</code>) and scale back any loss in the
+postfix. Skip <code>Mood</code>, which is target-style, and <code>Mana</code>,
+which is mirrored from the mana pool.
 
 ## 14. Diagnose from evidence, not from the visible symptom alone
 

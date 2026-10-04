@@ -15,8 +15,8 @@ by Sparkypants Studios or Klei Entertainment.
 | --- | ---: | --- |
 | Character Level Relics | 1.1.0 | Bases manifested relic level caps on the mage's level and completed trials instead of wand tier. |
 | Faction Balance | 1.0.0 | Reduces the Raven Cult's universal advantages and gives the Shattered the strongest Power growth. |
-| Sacrificial Altar | 1.3.6 | Adds a buildable altar, dedicated Sacrificial Rites research, sacrificial relic-upgrade ritual, Dark Temple room, custom model, and room treatment. |
-| Archmage Progression | 0.1.0 | Gives each magic school a configurable, passive per-skill benefit without editing base-game files. |
+| Sacrificial Altar | 1.3.7 | Adds a buildable altar, dedicated Sacrificial Rites research, sacrificial relic-upgrade ritual, Dark Temple room, custom model, and room treatment. |
+| Archmage Progression | 0.2.0 | Gives each magic school a configurable, passive per-skill benefit without editing base-game files. |
 
 The modules do not depend on one another. Install any combination of them.
 
@@ -78,7 +78,9 @@ MindOverMagic/
                 ├── RoomTypes/
                 └── Wallpaper/
         └── ArchmageProgression/
-            └── ArchmageProgression.dll
+            ├── ArchmageProgression.dll
+            └── Content/
+                └── CharacterStatus/
 ```
 
 On a successful launch, `BepInEx\LogOutput.log` contains a `loaded` line for
@@ -193,22 +195,112 @@ Archmage Progression is an independent, source-available interpretation of
 late-game magic-school advancement. It does not reuse another mod's files,
 assembly, assets, or code, and it never writes to Mind Over Magic's YAML files.
 
-Version 0.1.0 implements the reliable passive foundation. Every point in these
-schools provides a configurable benefit:
+Every point in a magic school provides a configurable benefit. The game shows
+the schools by element, given in brackets:
 
 | School | Per-skill benefit | Default |
 | --- | --- | ---: |
-| Pyromancy | Maximum Mana | +5 |
-| Geomancy | Maximum HP | +5 |
-| Divination | Combat Damage Bonus | +2 |
-| Manipulation | Combat Dodge Chance | +2 |
-| Hydrokinesis | Combat regeneration | +1 |
-| Necromancy | Slower ordinary need decay | 2% |
+| Pyromancy (Fire) | Maximum Mana | +5 |
+| Geomancy (Earth) | Maximum HP | +5 |
+| Divination (Lightning) | Combat Damage Bonus | +2 |
+| Manipulation (Air) | Combat Dodge Chance | +2 |
+| Hydrokinesis (Water) | Combat regeneration | +1 |
+| Necromancy (Dark) | Slower ordinary need decay | 2% |
+| Viturgy (Nature) | Conviction target | +2 |
 
-The current version intentionally does not claim to implement Viturgy's
-conviction feature, custom Adept/Archmage powers, or school-wide council
-effects. Those require separate validated game hooks and will be released only
+Viturgy's bonus is a native status named "Viturgy Attunement". It appears in the
+mage's Status & Conviction panel with its exact value, alongside the game's own
+Conviction modifiers.
+
+### Stat breakdown
+
+The game's own stat hover text lists each school's contribution, in the same
+style the game uses for traits and statuses:
+
+- **Selected-mage panel:** hovering the HP or Mana bar shows a line such as
+  "Earth 8 (Archmage Progression): +40".
+- **Mage Sheet:** hovering the Max HP, Max Mana or Damage Bonus icon in the
+  LEVEL section shows the same kind of line.
+- **Status & Conviction panel:** Viturgy Attunement is listed with the other
+  Conviction modifiers.
+
+Combat regeneration and need decay have no stat hover in the game, so those two
+are described in the Water and Dark rank tooltips instead. Set `Enabled = false`
+under `Stat breakdown` in the config to turn the hover lines off.
+
+### School ranks
+
+Version 0.2.0 adds a visible progression ladder. For each school, a mage earns
+a rank status once their trained skill level reaches the configured threshold:
+
+| Rank | Default skill level | Status shown on the mage |
+| --- | ---: | --- |
+| Adept | 5 | `<School> Adept`, for example "Pyromancy Adept" |
+| Archmage | 8 (the base-game cap) | `Archmage of <School>` |
+
+Every school has ranks, including Viturgy (shown in game as Nature). A mage holds at most one rank per school, so up to seven badges in total. Select
+a mage and the ranks are listed in the short status summary under the portrait,
+alongside lines like their Conviction level. Hovering one shows the rank threshold plus the exact per-level and minimum bonus
+the plugin grants for that school, generated from this install's config values
+so the tooltip never disagrees with the numbers in play. Earning a rank writes
+"<mage> earned the title of <rank>" to the log book.
+
+The per-skill bonuses above are granted from level 1 regardless of rank, and
+they still apply if badges are disabled. Ranks are checked the moment a trained skill level changes and again on the game's
+regular student status sweep, so existing saves gain their badges a few seconds
+after the game is unpaused. Nothing appears while the game stays paused. Gear and temporary skill bonuses do not count toward a rank.
+
+### Rank powers
+
+Some ranks also grant a power. An Archmage keeps the school's Adept power. Each
+power is listed in the rank's tooltip and can be tuned or switched off in the
+config.
+
+| School | Adept power (level 5) | Archmage power (level 8) |
+| --- | --- | --- |
+| Manipulation (Air) | Walks twice as fast | Also flies and passes through walls and floors |
+| Pyromancy (Fire) | Cooks twice as fast; starts every battle with Counterattack for two rounds | Same as Adept |
+| Necromancy (Dark) | None yet | Ordinary needs no longer decay |
+| Viturgy (Nature) | None yet | +5 Conviction target to every other mage in the school |
+
+Flight and the Fire powers reuse the game's own effects: the legacy "Ghostly
+Movement" pathing, the cooking-speed modifier, and the battle-start Counterattack
+granted by "Hour of the Raven Cult". An Archmage of Air walks rather than plays
+the flying animation while phasing.
+
+Each Archmage of Viturgy adds an "Embrace of Nature" status to every other mage,
+listed in the Status & Conviction panel.
+
+### Archmage Council
+
+The school's Archmage ranks are counted together. A mage who is an Archmage in
+two schools counts twice. Council powers apply to every mage once the school
+holds enough:
+
+| Archmage ranks | Power | Effect |
+| ---: | --- | --- |
+| 3 | Resolve | +10 Conviction target for every mage |
+| 5 | Scholarship | Teaching and learning are twice as fast |
+
+The school's founder, its ghost mage, carries an "Archmage Council (N)" badge.
+Hovering it lists the powers in force and the ones still to unlock. Resolve
+appears in each mage's Status & Conviction panel. Scholarship uses the same
+fields as the game's classroom and teacher bonuses.
+
+All of these definitions ship as plugin-owned YAML in the `Content` folder
+beside the DLL, generated by `scripts/generate_archmage_content.py`. If that
+folder is missing, the plugin logs a warning and shows no badges, powers or
+school-wide effects; the per-skill bonuses still apply.
+
+### Not yet implemented
+
+The remaining Adept and Archmage powers and Council powers are not built yet.
+They include Earth's armour and immunity, Lightning's free spells, Water's
+cleansing and resurrection ritual, Dark's lifesteal and reagents, Nature's
+Luxury bonus, and the Council's quest, refining, scouting and healing powers. Those require separate validated game hooks and will be released only
 when each can be tested without save-file edits or base-file replacement.
+
+### Configuration
 
 After its first launch, adjust the values in:
 
@@ -216,7 +308,13 @@ After its first launch, adjust the values in:
 BepInEx/config/ca.johnc.mindovermagic.archmageprogression.cfg
 ```
 
-Restart the game after changing them.
+The `Rank statuses` section holds an on/off switch and the two rank thresholds.
+`Rank powers` tunes or disables each power, and `Archmage Council` sets each
+Council power's threshold and strength.
+Setting a threshold to 0 disables that rank. `Conviction per Viturgy` set to 0
+disables the Viturgy bonus. The `Stat breakdown` section turns the hover lines
+on or off. Restart the game after changing
+any value.
 
 ## Updating
 
@@ -228,6 +326,12 @@ different BepInEx subdirectories.
 
 `CharacterLevelRelics` and `FactionBalance` can be removed by deleting their
 plugin folders while the game is closed.
+
+`ArchmageProgression` rank and Viturgy Attunement statuses are saved with each
+mage. Before removing the plugin, set `Enabled = false` under `Rank statuses`
+and `Conviction per Viturgy = 0` in its config file,
+load each school once, and save; the next status sweep strips every badge so no
+save references the plugin's statuses afterward. Keep the old save as a backup.
 
 `SacrificialAltar` adds custom definitions that can be referenced by saved
 schools. Back up your saves before installing it. Before removing it, demolish
@@ -242,8 +346,10 @@ loading correctly.
   installed or loading.
 - Confirm that the plugin DLLs are under `BepInEx\plugins`, not beside the game
   executable and not inside an extra nested ZIP folder.
-- Search `LogOutput.log` for `Character Level Relics`, `Faction Balance`, or
-  `Sacrificial Altar`.
+- Search `LogOutput.log` for `Character Level Relics`, `Faction Balance`,
+  `Sacrificial Altar`, or `Archmage Progression`.
+- If rank badges never appear, confirm the file `BepInEx\plugins\ArchmageProgression\Content\CharacterStatus\archmage_ranks.yaml`
+  exists and look for an `Injected 26 Archmage Progression statuses` line in the log.
 - The altar will not appear in the build menu until Sacrificial Rites has been
   completed in that school.
 - Back up affected saves and report the game build, mod versions, and relevant

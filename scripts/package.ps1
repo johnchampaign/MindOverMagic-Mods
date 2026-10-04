@@ -1,5 +1,5 @@
 param(
-    [string]$BundleVersion = "1.2.1",
+    [string]$BundleVersion = "1.2.2",
     [string]$Configuration = "Release"
 )
 
@@ -33,6 +33,7 @@ $modules = @(
         Project = "src\ArchmageAscension\ArchmageAscension.csproj"
         Assembly = "ArchmageProgression.dll"
         Output = "src\ArchmageAscension\bin\$Configuration\netstandard2.1\ArchmageProgression.dll"
+        Content = "src\ArchmageAscension\Content"
     }
 )
 

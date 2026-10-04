@@ -28,4 +28,7 @@
       <Private>false</Private>
     </Reference>
   </ItemGroup>
+  <ItemGroup>
+    <Content Include="Content\**\*.yaml" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
 </Project>

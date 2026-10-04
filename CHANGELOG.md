@@ -1,5 +1,54 @@
 # Changelog
 
+## Bundle v1.2.2 - 2026-10-03
+
+### Archmage Progression 0.2.0
+
+- Add school rank badges, listed in the selected-mage summary under the
+  portrait. Every mage now carries an informational, persistent
+  "Adept" or "Archmage" status for each magic school they have trained to the
+  configured level (defaults: Adept at 5, Archmage at 8, the base-game cap).
+  All seven schools have ranks, including Viturgy (Nature).
+- Rank status tooltips state the rank threshold and the exact per-level and
+  minimum bonus the plugin grants for that school, filled in from the config
+  file at load time so the text always matches the install's settings.
+- Earning a rank writes "<mage> earned the title of <rank>" to the log book.
+- Ranks are re-evaluated the moment a trained skill changes and on the game's
+  own periodic student status sweep, so existing saves pick up badges on load
+  without any save edits.
+- Rank statuses are purely informational; the per-skill passive bonuses from
+  0.1.0 are unchanged and apply whether or not badges are enabled.
+- Ship the rank definitions as plugin-owned YAML in a `Content` folder next to
+  the DLL; base-game files remain untouched.
+- Add Viturgy's per-level Conviction bias (default +2 Conviction target per
+  level). It is a native "Viturgy Attunement" status, so the Status &
+  Conviction panel lists it with its exact value.
+- Add rank powers. Air Adepts walk twice as fast and Air Archmages fly and pass
+  through walls. Fire Adepts cook twice as fast and start battles with two
+  rounds of Counterattack. Dark Archmages' ordinary needs stop decaying. Each
+  Nature Archmage gives every other mage +5 Conviction target.
+- Add the Archmage Council. Every Archmage rank in the school counts. At 3,
+  every mage gains +10 Conviction target; at 5, teaching and learning run
+  twice as fast. The founder carries a badge listing the powers in force.
+- Fix Necromancy's per-level bonus. Since 0.1.0 it reduced the rate at which
+  eating, sleeping and recreation refill needs, a penalty. It now slows need
+  decay as described.
+- Add a stat breakdown. The HP and Mana bar hovers on the selected-mage panel
+  and the Max HP, Max Mana and Damage Bonus hovers on the Mage Sheet now list
+  each school's contribution. These UI patches skip themselves with a warning
+  if a game update renames their target, rather than disabling the plugin.
+
+### Sacrificial Altar 1.3.7
+
+- Load the plugin's status YAML through the unpatched base catalog loader. The
+  previous path called the patched loader on a temporary catalog, which ran
+  every other installed plugin's status-catalog postfix against it. With
+  Archmage Progression installed that could consume this plugin's once-only
+  injection guard and leave the Sacrificed Mage status out of the live catalog.
+- Re-inject the Sacrificed Mage status whenever a status catalog lacks it, and
+  only ever add this plugin's own definition to the live catalog.
+- No gameplay changes.
+
 ## Bundle v1.2.1 - 2026-10-03
 
 - Publish a standalone directly extractable ZIP for each module, alongside the

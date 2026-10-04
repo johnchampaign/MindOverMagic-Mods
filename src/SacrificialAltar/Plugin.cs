@@ -16,7 +16,7 @@ public sealed class Plugin : BaseUnityPlugin
 {
     public const string PluginGuid = "ca.johnc.mindovermagic.sacrificialaltar";
     public const string PluginName = "Sacrificial Altar";
-    public const string PluginVersion = "1.3.6";
+    public const string PluginVersion = "1.3.7";
     internal static ManualLogSource ModLog { get; private set; } = null!;
 
     private void Awake()
@@ -311,21 +311,54 @@ internal static class ArchetypeCatalogLoadPatch
 [HarmonyPatch(typeof(CharacterStatusConfigCatalog), nameof(CharacterStatusConfigCatalog.Load))]
 internal static class StatusCatalogLoadPatch
 {
-    private static bool _injected;
+    private const string GriefStatusKey = "SacrificedMageGrief";
     [System.ThreadStatic] private static bool _loadingMod;
+
+    // Non-virtual call to the generic base loader. Loading through the patched
+    // CharacterStatusConfigCatalog.Load would run every other plugin's postfix against
+    // this temporary catalog and could trip their once-only guards.
+    private static readonly Action<DefinitionCatalog<CharacterStatusConfig>, string, YamlParserType>? BaseLoad =
+        CreateBaseLoad();
+
+    private static Action<DefinitionCatalog<CharacterStatusConfig>, string, YamlParserType>? CreateBaseLoad()
+    {
+        var method = AccessTools.Method(
+            typeof(DefinitionCatalog<CharacterStatusConfig>), "Load",
+            new[] { typeof(string), typeof(YamlParserType) });
+        return method is null
+            ? null
+            : AccessTools.MethodDelegate<Action<DefinitionCatalog<CharacterStatusConfig>, string, YamlParserType>>(
+                method, null, virtualCall: false);
+    }
 
     [HarmonyPostfix]
     private static void Register(CharacterStatusConfigCatalog __instance, YamlParserType __1)
     {
-        if (_injected || _loadingMod) return;
+        // Keyed on content rather than a once-only flag so a rebuilt catalog is repopulated
+        // and another plugin's temporary catalog cannot consume this plugin's one chance.
+        if (_loadingMod || __instance.TryGetDefinitionFromStringKey(GriefStatusKey, out _)) return;
+        if (BaseLoad is null)
+        {
+            Plugin.ModLog.LogError("Could not resolve the base definition loader; Sacrificed Mage status unavailable.");
+            return;
+        }
         _loadingMod = true;
         try
         {
             var modCatalog = new CharacterStatusConfigCatalog();
-            modCatalog.Load(ModContent.Root, __1);
-            foreach (var definition in modCatalog.AllDefinitions()) __instance.Add(definition);
+            BaseLoad(modCatalog, ModContent.Root, __1);
+            foreach (var definition in modCatalog.AllDefinitions())
+            {
+                // Only this plugin's own definition may enter the live catalog.
+                if (definition?.Id.Key != GriefStatusKey)
+                {
+                    Plugin.ModLog.LogWarning(
+                        $"Skipped an unexpected status definition from {ModContent.Root}: '{definition?.Id.Key ?? "<null>"}'.");
+                    continue;
+                }
+                __instance.Add(definition);
+            }
             DefinitionCatalog<CharacterStatusConfig>.Instance = __instance;
-            _injected = true;
             Plugin.ModLog.LogInfo("Injected Sacrificed Mage status before status post-load indexing.");
         }
         catch (System.Exception exception)

@@ -1,5 +1,14 @@
 # Changelog
 
+## Bundle v1.2.3 - 2026-10-07
+
+### Archmage Progression 0.2.1
+
+- Fix the Archmage Council badge never appearing. The game keeps the school
+  founder marker on the founder's out-of-school character record, while the
+  founder the player sees is an in-school ghost; the badge now goes on that
+  ghost. A one-time log line names the founder that receives it.
+
 ## Bundle v1.2.2 - 2026-10-06
 
 ### Archmage Progression 0.2.0

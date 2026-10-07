@@ -24,7 +24,7 @@ public sealed class Plugin : BaseUnityPlugin
 {
     public const string PluginGuid = "ca.johnc.mindovermagic.archmageprogression";
     public const string PluginName = "Archmage Progression";
-    public const string PluginVersion = "0.2.0";
+    public const string PluginVersion = "0.2.1";
 
     internal static ManualLogSource ModLog { get; private set; } = null!;
     internal static ConfigEntry<float> ManaPerPyromancy { get; private set; } = null!;
@@ -1048,6 +1048,8 @@ internal static class RankStatusSweepPatch
 {
     private static readonly List<SkillsComponent> Scratch = new();
     private static readonly List<SchoolFounderComponent> FounderScratch = new();
+    private static readonly List<GhostComponent> GhostScratch = new();
+    private static bool _founderLogged;
     private static readonly List<Entity> Mages = new();
     private static readonly List<Entity> Founders = new();
     private static bool _firstRunLogged;
@@ -1121,15 +1123,39 @@ internal static class RankStatusSweepPatch
         Scratch.Clear();
         try
         {
-            FounderScratch.Clear();
-            __0.ComponentManager.InSchoolGather(FounderScratch, static _ => true);
+            // The founder marker lives on the founder's character record, which the game
+            // creates outside the school; the founder the player sees is an in-school ghost
+            // whose DeadEntity is that record. Badge the ghost, and any in-school entity that
+            // carries the marker directly.
             Founders.Clear();
-            foreach (var founder in FounderScratch)
+            GhostScratch.Clear();
+            __0.ComponentManager.InSchoolGather(GhostScratch, static ghost =>
+                ghost.DeadEntity is { IsDestroyed: false } record && record.HasComponent<SchoolFounderComponent>());
+            foreach (var ghost in GhostScratch)
             {
-                if (founder.Entity is { IsDestroyed: false } entity)
+                if (ghost.Entity is { IsDestroyed: false } entity && !Founders.Contains(entity))
                 {
                     Founders.Add(entity);
                 }
+            }
+
+            FounderScratch.Clear();
+            __0.ComponentManager.InSchoolGather(FounderScratch, static _ => true);
+            foreach (var founder in FounderScratch)
+            {
+                if (founder.Entity is { IsDestroyed: false } entity && !Founders.Contains(entity))
+                {
+                    Founders.Add(entity);
+                }
+            }
+
+            if (!_founderLogged)
+            {
+                _founderLogged = true;
+                Plugin.ModLog.LogInfo(Founders.Count == 0
+                    ? "Archmage Council: no founder found in the school; the Council badge has nowhere to go."
+                    : $"Archmage Council: the badge goes on {EntityUtils.GetDisplayName(Founders[0])} " +
+                      $"(can hold statuses: {Founders[0].HasComponent<CharacterStatusComponent>()}).");
             }
 
             SchoolPowers.RefreshSchool(Mages, Founders);
@@ -1141,6 +1167,7 @@ internal static class RankStatusSweepPatch
         finally
         {
             FounderScratch.Clear();
+            GhostScratch.Clear();
             Founders.Clear();
             Mages.Clear();
         }

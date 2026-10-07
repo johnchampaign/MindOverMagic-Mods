@@ -1,0 +1,101 @@
+[h1]Archmage Progression Mod: School Ranks, Archmage Powers, and the Archmage Council[/h1]
+
+Archmage Progression is a new, independent, fan-made mod for Mind Over Magic. It rewards the long road to mastering magic: every skill point gives a bonus, mages earn [b]Adept[/b] at level 5 and [b]Archmage[/b] at level 8 in each school, those ranks unlock powers, and the school's Archmages together form an [b]Archmage Council[/b] with school-wide powers.
+
+It installs alongside Character Level Relics, Faction Balance, and Sacrificial Altar, or entirely on its own.
+
+These are unofficial mods and are not affiliated with or supported by Sparkypants Studios or Klei Entertainment.
+
+[url=https://github.com/johnchampaign/MindOverMagic-Mods/releases]Download the mods from GitHub Releases[/url]
+[url=https://github.com/johnchampaign/MindOverMagic-Mods]Source code and documentation[/url]
+
+[h2]Requirements[/h2]
+[list]
+[*]The Windows Steam version of Mind Over Magic
+[*][url=https://github.com/BepInEx/BepInEx/releases]BepInEx 5.4.23.5 for Windows x64[/url]
+[/list]
+Developed against Mind Over Magic Steam build [code]20147148[/code]. Game updates may require updated versions of the mods.
+
+[h2]Installation[/h2]
+[olist]
+[*]Install BepInEx 5 in the folder containing [code]mindovermagic.exe[/code], start the game once, then close it.
+[*]Download [code]MindOverMagic-ArchmageProgression-v(version).zip[/code], or the all-modules [code]MindOverMagic-Mods-v(version).zip[/code].
+[*]Extract it into the Mind Over Magic game folder and merge the [code]BepInEx[/code] folder when prompted.
+[*]Start the game through Steam.
+[/olist]
+Keep the [code]Content[/code] folder next to [code]ArchmageProgression.dll[/code]; it holds the ranks, powers, and buildings.
+
+[h2]Every Skill Point Counts[/h2]
+[list]
+[*][b]Fire:[/b] +5 Max Mana per level
+[*][b]Earth:[/b] +5 Max HP per level
+[*][b]Lightning:[/b] +2 Damage Bonus per level
+[*][b]Air:[/b] +2 Dodge per level
+[*][b]Water:[/b] +1 combat regeneration per level
+[*][b]Dark:[/b] 2% slower need decay per level
+[*][b]Nature:[/b] +2 Conviction per level ("Viturgy Attunement" in the Status & Conviction panel)
+[/list]
+Hover a mage's HP or Mana bar, or the stat icons on the Mage Sheet, to see each school's contribution.
+
+[h2]School Ranks[/h2]
+Mages earn [b]<School> Adept[/b] at level 5 and [b]Archmage of <School>[/b] at level 8. Ranks appear in the short summary under the selected mage's portrait; hover one to see exactly what it grants. Earning a rank writes to the log book. Existing saves pick up ranks a few seconds after you unpause.
+
+[h2]Adept and Archmage Powers[/h2]
+An Archmage keeps their school's Adept power.
+[list]
+[*][b]Fire:[/b] Adepts cook twice as fast and start battles with two rounds of Counterattack. Archmages burn away one of their own traumas or scars each day and are [i]Renewed by Flame[/i].
+[*][b]Earth:[/b] Adepts start battles with armour equal to half their Max HP. Archmages are immune to harmful combat effects, and while you have one, the school can build [b]Nexus Gateways[/b].
+[*][b]Water:[/b] Adepts shed harmful combat effects every round. While you have an Archmage, the school can build the [b]Waters of Return[/b].
+[*][b]Lightning:[/b] Adepts start battles standing on a mana vein. Archmages cast every spell without spending mana.
+[*][b]Air:[/b] Adepts walk twice as fast. Archmages fly and pass through walls and floors.
+[*][b]Dark:[/b] Adepts regain 10% of their spell damage and 25 HP whenever a foe falls. Archmages' needs stop decaying, and they gather a dark reagent bounty at midnight and noon.
+[*][b]Nature:[/b] While you have an Adept, every room gains +2 Luxury. Each Archmage gives every other mage +5 Conviction.
+[/list]
+"Harmful combat effects" means the debuffs the game's own Sanctified terrain cleanses, such as Stunned, Blinded, Burns, and Fear.
+
+[h2]The Archmage Council[/h2]
+Every Archmage rank in the school counts; a mage who is an Archmage in two schools counts twice. Your founder carries an [b]Archmage Council[/b] badge listing what is in force.
+[list]
+[*][b]1 – Rematch Spoils:[/b] boss rematches pay what the first victory paid, relic included.
+[*][b]Each – Swift Travel:[/b] every Archmage rank cuts remaining quest travel by a tenth; at 10, parties return at once.
+[*][b]2 – Refining:[/b] refineries hand back twice what they make.
+[*][b]3 – Resolve:[/b] +10 Conviction for every mage.
+[*][b]4 – Open Ledgers:[/b] scouting a faction reveals every side quest.
+[*][b]5 – Scholarship:[/b] teaching and learning are twice as fast.
+[*][b]6 – Mending:[/b] wounds close three times as fast.
+[*][b]7 – Steady Minds:[/b] mental breaks no longer leave a mage At Death's Door.
+[/list]
+
+[h2]Waters of Return[/h2]
+A ritual fountain under [b]Furniture → Rituals & Relics[/b], available while the school has an Archmage of Water. With an Archmage of Water officiating, its ritual costs 1 Mana Crystal, 50 Phoenix Flowers, and 54 Gnosis Shards, and raises the mage buried in a grave [b]in the same room[/b].
+
+The returned mage keeps their name, appearance, level, skills, and role, but their badges, likes, relationships, and lasting effects stay in the grave; beds, desks, groups, and relics need reassigning. The ritual button explains what is missing and will not start unless the mage can return, so ingredients are never wasted. The founder and ghosts serving as staff cannot be raised.
+
+[h2]Nexus Gateways[/h2]
+Under [b]Furniture → School Traversal[/b] while the school has an Archmage of Earth. Gateways teleport to one another and to any Underschool gateways you have found.
+
+[h2]Configuration[/h2]
+Every bonus, rank threshold, power, and Council requirement can be tuned or switched off in:
+[code]BepInEx\config\ca.johnc.mindovermagic.archmageprogression.cfg[/code]
+Restart the game after changing it.
+
+[h2]Uninstalling and Save Safety[/h2]
+Back up your saves first. Before removing Archmage Progression:
+[olist]
+[*]Demolish every Nexus Gateway and Waters of Return fountain.
+[*]In the config, set [code]Enabled = false[/code] under Rank statuses and [code]Conviction per Viturgy = 0[/code].
+[*]Load the school, unpause for a few seconds, and save under a new name.
+[/olist]
+Mages raised by the fountain remain ordinary mages.
+
+[h2]Troubleshooting[/h2]
+[list]
+[*][code]BepInEx\LogOutput.log[/code] should include "Injected 91 Archmage Progression statuses".
+[*]Ranks and Council effects need the game to be unpaused for a few seconds after loading.
+[*]When reporting a problem, include the game build, mod versions, and the relevant log lines.
+[/list]
+
+[h2]Permissions and Credits[/h2]
+Inspired by the feature design of the Archmage Ascension mod on Nexus Mods. Archmage Progression is an independent implementation and reuses none of its files or code, and it never modifies the game's own files.
+
+The original mod source code is released under the MIT License. Mind Over Magic, its code, assets, names, and trademarks belong to their respective owners. No Mind Over Magic assemblies are redistributed with these mods.

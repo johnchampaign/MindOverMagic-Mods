@@ -1,6 +1,6 @@
 # Changelog
 
-## Bundle v1.2.2 - 2026-10-03
+## Bundle v1.2.2 - 2026-10-06
 
 ### Archmage Progression 0.2.0
 

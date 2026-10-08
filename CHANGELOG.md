@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+### Character Level Relics 1.2.0
+
+- Port to the game's own mod support on the `mod_testing` beta as
+  `johnc.characterlevelrelics`, built from the same patch as the BepInEx
+  module by `src/CharacterLevelRelics.Official`.
+- Both builds: drop the debug line logged on every relic-level calculation, and
+  log the no-character-level fallback once instead of on every call.
+
 ### Archmage Progression 0.3.0
 
 - Port to the game's own mod support on the `mod_testing` beta as

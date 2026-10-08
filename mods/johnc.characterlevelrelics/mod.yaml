@@ -1,0 +1,10 @@
+modId: johnc.characterlevelrelics
+name: Character Level Relics
+author: John Champaign
+version: 1.2.0
+description: A relic manifested from a mage reaches a level cap of the mage's own level plus a bonus for each trial they have earned, up to 24. Wand type, wand tier and apprenticeship no longer affect it.
+gameVersion: "1.0.0"
+
+tags:
+  - Balance
+  - Relics

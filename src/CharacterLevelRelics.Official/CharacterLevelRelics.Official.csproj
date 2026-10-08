@@ -1,0 +1,39 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Character Level Relics for the game's own mod support (the mod_testing beta).
+       Shares its patch with ..\CharacterLevelRelics, the BepInEx build. -->
+  <PropertyGroup>
+    <TargetFramework>netstandard2.1</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <AssemblyName>JohncCharacterLevelRelics</AssemblyName>
+    <RootNamespace>CharacterLevelRelics</RootNamespace>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <ModSource>$(MSBuildThisFileDirectory)..\..\mods\johnc.characterlevelrelics</ModSource>
+    <ModStage>$(MSBuildThisFileDirectory)..\..\dist\official\johnc.characterlevelrelics</ModStage>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="OfficialEntry.cs" />
+    <Compile Include="..\CharacterLevelRelics\RelicLevelCap.cs" Link="Shared\RelicLevelCap.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- The game's own Harmony, never BepInEx's; neither is shipped. -->
+    <Reference Include="0Harmony">
+      <HintPath>$(GameManagedDir)\0Harmony.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Simulation">
+      <HintPath>$(GameManagedDir)\Simulation.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+
+  <!-- Assemble the installable mod folder: mod.yaml and the DLL. -->
+  <Target Name="StageOfficialMod" AfterTargets="Build">
+    <ItemGroup>
+      <ModRootFile Include="$(ModSource)\*" />
+    </ItemGroup>
+    <RemoveDir Directories="$(ModStage)" />
+    <Copy SourceFiles="@(ModRootFile)" DestinationFolder="$(ModStage)" />
+    <Copy SourceFiles="$(TargetPath)" DestinationFolder="$(ModStage)\Assemblies" />
+  </Target>
+</Project>

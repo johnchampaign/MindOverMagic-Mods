@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+### Sacrificial Altar 1.4.0
+
+- Port to the game's own mod support on the `mod_testing` beta as
+  `johnc.sacrificialaltar`, built from the same source as the BepInEx module by
+  `src/SacrificialAltar.Official`. Its definitions, including the Sacrificial
+  Rites research, load from `Defs/`; the runtime-built altar model is listed
+  with the game's prefabs so reference checks pass; saves from the BepInEx build
+  keep a completed Sacrificial Rites.
+- BepInEx build: definition keys move to a shared `Keys` class; no change in
+  behaviour.
+
 ### Character Level Relics 1.2.0
 
 - Port to the game's own mod support on the `mod_testing` beta as

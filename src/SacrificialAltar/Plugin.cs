@@ -1,5 +1,7 @@
+#if !OFFICIAL_MOD
 using BepInEx;
 using BepInEx.Logging;
+#endif
 using HarmonyLib;
 using Model;
 using System;
@@ -11,12 +13,13 @@ using Object = UnityEngine.Object;
 
 namespace SacrificialAltar;
 
+#if !OFFICIAL_MOD
 [BepInPlugin(PluginGuid, PluginName, PluginVersion)]
 public sealed class Plugin : BaseUnityPlugin
 {
     public const string PluginGuid = "ca.johnc.mindovermagic.sacrificialaltar";
     public const string PluginName = "Sacrificial Altar";
-    public const string PluginVersion = "1.3.7";
+    public const string PluginVersion = "1.4.0";
     internal static ManualLogSource ModLog { get; private set; } = null!;
 
     private void Awake()
@@ -46,12 +49,30 @@ internal static class ModContent
 {
     internal static string Root => Path.Combine(Paths.PluginPath, "SacrificialAltar", "Content");
 }
+#endif
+
+/// <summary>
+/// Definition keys. The official-mod build's definitions come from its Defs folder, and
+/// the game namespaces them with the mod id.
+/// </summary>
+internal static class Keys
+{
+#if OFFICIAL_MOD
+    internal const string Prefix = "johnc.sacrificialaltar.";
+#else
+    internal const string Prefix = "";
+#endif
+    internal const string Altar = Prefix + "SacrificialAltar";
+    internal const string Rites = Prefix + "SacrificialRites";
+    internal const string DarkTemple = Prefix + "DarkTemple";
+    internal const string Grief = Prefix + "SacrificedMageGrief";
+}
 
 [HarmonyPatch(typeof(PrefabResources), nameof(PrefabResources.TryGetPrefabByPath))]
 internal static class AltarPrefabPatch
 {
     private const string CustomPrefabKey = "Mods/SacrificialAltar/Altar";
-    private const string ShopPrefabKey = "Entities/" + CustomPrefabKey;
+    internal const string ShopPrefabKey = "Entities/" + CustomPrefabKey;
     private const string MaterialSourceKey = "Furniture/Crafting/Mortem/SoulAltar_4x4x3";
     private const string NativeSelectionPrefabKey =
         "Entities/Furniture/Rituals/CeremonyHall/CeremonyStation_3x3x1";
@@ -260,6 +281,7 @@ internal static class PrefabResourcesInitPatch
         AltarPrefabPatch.EnsureBuilt(__instance);
 }
 
+#if !OFFICIAL_MOD
 [HarmonyPatch(typeof(ConfigData), nameof(ConfigData.Load))]
 internal static class ArchetypeCatalogLoadPatch
 {
@@ -628,14 +650,16 @@ internal static class WallpaperCatalogLoadPatch
     }
 }
 
+#endif
+
 [HarmonyPatch(typeof(ResearchTechCatalog), nameof(ResearchTechCatalog.Finalize))]
 internal static class SacrificialRitesGraphValidationPatch
 {
     [HarmonyPostfix]
-    private static void Validate(ResearchTechCatalog __instance)
+    internal static void Validate(ResearchTechCatalog __instance)
     {
         if (!__instance.TryGetDefId("AdvancedDarkI", out var darkArtsId) ||
-            !__instance.TryGetDefId("SacrificialRites", out var ritesId))
+            !__instance.TryGetDefId(Keys.Rites, out var ritesId))
         {
             Plugin.ModLog.LogError(
                 "Sacrificial Rites research IDs were missing after catalog finalization.");
@@ -681,7 +705,7 @@ internal static class BuildableArchetypePatch
     [HarmonyPostfix]
     private static void IncludeSacrificialAltar(ref List<Archetype> __0)
     {
-        if (!ConfigData.Instance.TryGetArchetypeFromStringKey("SacrificialAltar", out var altar) ||
+        if (!ConfigData.Instance.TryGetArchetypeFromStringKey(Keys.Altar, out var altar) ||
             __0.Contains(altar))
         {
             return;
@@ -700,8 +724,8 @@ internal static class BuildableArchetypePatch
 [HarmonyPatch(typeof(View.HUDPanel_BuildPalette_Selection), "Update")]
 internal static class AltarResearchVisibilityPatch
 {
-    private const string AltarKey = "SacrificialAltar";
-    private const string RequiredResearchKey = "SacrificialRites";
+    private const string AltarKey = Keys.Altar;
+    private const string RequiredResearchKey = Keys.Rites;
     private static bool? _lastUnlockedState;
 
     [HarmonyPrefix]
@@ -785,7 +809,7 @@ internal static class AltarRelicPickerPatch
         RitualSiteComponent? ____ritualSite,
         ref View.ArtifactPickerUse __result)
     {
-        if (____ritualSite?.Entity.EntityKey.Key == "SacrificialAltar" &&
+        if (____ritualSite?.Entity.EntityKey.Key == Keys.Altar &&
             __result == View.ArtifactPickerUse.None)
         {
             __result = View.ArtifactPickerUse.ChangeLegacy;
@@ -820,7 +844,7 @@ internal static class AltarRelicCandidatePatch
         var closureType = __instance.GetType();
         var ritualSite = AccessTools.Field(closureType, "ritualSite")
             .GetValue(__instance) as RitualSiteComponent;
-        if (ritualSite?.Entity.EntityKey.Key != "SacrificialAltar")
+        if (ritualSite?.Entity.EntityKey.Key != Keys.Altar)
         {
             return;
         }
@@ -874,7 +898,7 @@ internal static class SacrificeCompletionPatch
     [HarmonyPrefix]
     private static void Capture(RitualSiteComponent __instance, ref CompletionState? __state)
     {
-        if (__instance.Entity.EntityKey.Key != "SacrificialAltar" ||
+        if (__instance.Entity.EntityKey.Key != Keys.Altar ||
             !__instance.TryGetInputArtifact(out var artifact))
         {
             return;
@@ -903,7 +927,7 @@ internal static class SacrificeCompletionPatch
         if (RoomUtils.TryFindRoom(__instance.Entity, out var room))
         {
             var roomComponent = RoomUtils.GetRoomComponent(room);
-            if (roomComponent.RoomType?.Id.Key == "DarkTemple")
+            if (roomComponent.RoomType?.Id.Key == Keys.DarkTemple)
             {
                 increase += 1;
             }

@@ -1,0 +1,11 @@
+modId: johnc.sacrificialaltar
+name: Sacrificial Altar
+author: John Champaign
+version: 1.4.0
+description: Research Sacrificial Rites after Dark Arts to build a Sacrificial Altar, whose ritual sacrifices a mage to raise a relic's level cap. Staff give more than apprentices, apprentices more than students, and an altar in a Dark Temple adds one more.
+gameVersion: "1.0.0"
+
+tags:
+  - Content
+  - Rituals
+  - Relics

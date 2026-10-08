@@ -1,0 +1,43 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Sacrificial Altar for the game's own mod support (the mod_testing beta).
+       Shares its patches and definitions with ..\SacrificialAltar, the BepInEx build. -->
+  <PropertyGroup>
+    <TargetFramework>netstandard2.1</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <AssemblyName>JohncSacrificialAltar</AssemblyName>
+    <RootNamespace>SacrificialAltar</RootNamespace>
+    <DefineConstants>$(DefineConstants);OFFICIAL_MOD</DefineConstants>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <ModSource>$(MSBuildThisFileDirectory)..\..\mods\johnc.sacrificialaltar</ModSource>
+    <ModStage>$(MSBuildThisFileDirectory)..\..\dist\official\johnc.sacrificialaltar</ModStage>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="OfficialEntry.cs" />
+    <Compile Include="..\SacrificialAltar\Plugin.cs" Link="Shared\Plugin.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- The game's own Harmony, never BepInEx's; nothing here is shipped. -->
+    <Reference Include="0Harmony"><HintPath>$(GameManagedDir)\0Harmony.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="Simulation"><HintPath>$(GameManagedDir)\Simulation.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="View"><HintPath>$(GameManagedDir)\View.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="ViewState"><HintPath>$(GameManagedDir)\ViewState.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="UnityEngine"><HintPath>$(GameManagedDir)\UnityEngine.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="UnityEngine.CoreModule"><HintPath>$(GameManagedDir)\UnityEngine.CoreModule.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="UnityEngine.PhysicsModule"><HintPath>$(GameManagedDir)\UnityEngine.PhysicsModule.dll</HintPath><Private>false</Private></Reference>
+  </ItemGroup>
+
+  <!-- Assemble the installable mod folder: this mod's own files (mod.yaml and the
+       official-only research definition), the DLL, and the definitions shared with the
+       BepInEx build. -->
+  <Target Name="StageOfficialMod" AfterTargets="Build">
+    <ItemGroup>
+      <ModSourceFile Include="$(ModSource)\**\*" />
+      <ModDefsFile Include="..\SacrificialAltar\Content\**\*.yaml" />
+    </ItemGroup>
+    <RemoveDir Directories="$(ModStage)" />
+    <Copy SourceFiles="@(ModSourceFile)" DestinationFiles="@(ModSourceFile->'$(ModStage)\%(RecursiveDir)%(Filename)%(Extension)')" />
+    <Copy SourceFiles="$(TargetPath)" DestinationFolder="$(ModStage)\Assemblies" />
+    <Copy SourceFiles="@(ModDefsFile)" DestinationFiles="@(ModDefsFile->'$(ModStage)\Defs\%(RecursiveDir)%(Filename)%(Extension)')" />
+  </Target>
+</Project>

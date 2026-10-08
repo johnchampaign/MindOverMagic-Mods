@@ -9,6 +9,7 @@ Players on the public build should keep using the BepInEx modules in `src/`.
 | `johnc.factionbalance` | 2.0.0 | YAML only, no code | Faction Balance 1.0.0 (BepInEx) |
 | `johnc.archmageprogression` | 0.3.0 | C# and YAML | Archmage Progression 0.2.1 (BepInEx) |
 | `johnc.characterlevelrelics` | 1.2.0 | C# | Character Level Relics 1.1.0 (BepInEx) |
+| `johnc.sacrificialaltar` | 1.4.0 | C# and YAML | Sacrificial Altar 1.3.7 (BepInEx) |
 
 ## Installing
 
@@ -23,7 +24,7 @@ which added a second `ConfigBundle.Load` overload.
 
 `johnc.factionbalance` is complete as it sits in this folder. The code mods
 are built: `dotnet build src/ArchmageProgression.Official -c Release` (or
-`src/CharacterLevelRelics.Official`) assembles the installable folder in
+`src/CharacterLevelRelics.Official`, `src/SacrificialAltar.Official`) assembles the installable folder in
 `dist/official/<modId>` from this folder's `mod.yaml`, the compiled DLL, and
 any definitions shared with the BepInEx build.
 
@@ -92,3 +93,28 @@ level cap = min(24, mage level + completed trial bonuses)
 Each earned tier 0 or 1 trial adds 1, tier 2 adds 2 and tier 3 adds 3. Wand
 type, wand tier and apprenticeship no longer count. It has no settings and no
 definitions; it is one Harmony prefix on `ArtifactUtils.GetRelicLevelCap`.
+
+## Sacrificial Altar 1.4.0
+
+The same altar, research, ritual, Dark Temple and grief status as the BepInEx
+build. `src/SacrificialAltar.Official` compiles `src/SacrificialAltar`'s
+`Plugin.cs` with `OFFICIAL_MOD` defined, plus its own `OfficialEntry.cs`.
+What differs:
+
+- The altar, Dark Temple, its wallpaper and the grief status load from `Defs/`
+  instead of being injected into the game's catalogs. The Sacrificial Rites
+  research, which the BepInEx build creates in code, is the plain definition
+  `Defs/ResearchTechs/sacrificial_rites.yaml` in this folder.
+- Keys are namespaced: `johnc.sacrificialaltar.SacrificialAltar`,
+  `...SacrificialRites`, `...DarkTemple`, `...SacrificedMageGrief`.
+- The altar's model is still built at runtime by a Harmony patch, since a mod
+  cannot ship a Unity prefab. `OnInitialize` adds its path to the game's prefab
+  list, so the game's reference checks know the altar has a model.
+- On load it checks that Sacrificial Rites sits under Dark Arts in the research
+  tree, and logs the result.
+
+**Saves from the BepInEx build.** A completed Sacrificial Rites is carried
+over when the save loads. Demolish the altar before moving a save across: the
+building itself, and a room recognised as a Dark Temple, are recorded under the
+old keys. Rebuilding the altar there should make the room a Dark Temple
+again; this has not been tested on a moved save.

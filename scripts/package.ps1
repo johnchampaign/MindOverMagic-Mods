@@ -1,5 +1,5 @@
 param(
-    [string]$BundleVersion = "1.2.3",
+    [string]$BundleVersion = "1.2.4",
     [string]$Configuration = "Release"
 )
 

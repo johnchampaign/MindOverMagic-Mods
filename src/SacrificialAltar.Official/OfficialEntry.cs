@@ -218,6 +218,49 @@ public sealed class OfficialEntry : IMod
         }
     }
 
+    /// <summary>
+    /// A mage still grieving under the BepInEx build's key who grieves again gets this
+    /// build's grief as a second status, and the two stack. Once a mage has this build's
+    /// grief, drop the old one. Runs on load and after every sacrifice.
+    /// </summary>
+    internal static void DropLegacyGriefDuplicates(Simulation? simulation)
+    {
+        if (simulation?.ComponentManager is not { } components)
+        {
+            return;
+        }
+
+        var dropped = 0;
+        try
+        {
+            var grieving = new List<CharacterStatusComponent>();
+            foreach (var statuses in components.AllEnumerator<CharacterStatusComponent>())
+            {
+                if (CharacterStatusUtils.HasStatusKey(LegacyGriefKey, statuses) &&
+                    CharacterStatusUtils.HasStatusKey(Keys.Grief, statuses))
+                {
+                    grieving.Add(statuses);
+                }
+            }
+
+            foreach (var statuses in grieving)
+            {
+                CharacterStatusUtils.RemoveStatusKey(LegacyGriefKey, statuses);
+                dropped++;
+            }
+        }
+        catch (Exception exception)
+        {
+            Plugin.ModLog.LogError($"Failed to drop duplicate grief statuses: {exception}");
+            return;
+        }
+
+        if (dropped > 0)
+        {
+            Plugin.ModLog.LogInfo($"Dropped {dropped} grief statuses from the BepInEx build that a newer grief replaces.");
+        }
+    }
+
     public void OnSimulationStart(Simulation simulation)
     {
     }
@@ -225,6 +268,7 @@ public sealed class OfficialEntry : IMod
     public void OnWorldReady(Simulation simulation, SimulationStartReason reason, IModContext context)
     {
         RelinkLegacyGrief(simulation);
+        DropLegacyGriefDuplicates(simulation);
 
         // Saves made with the BepInEx build record the research under its un-namespaced key.
         // Carry it over so the school keeps the altar without researching it again.

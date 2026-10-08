@@ -17,6 +17,8 @@
   with an empty id, which stopped the Mage Sheet drawing and accepting input
   for every grieving mage; each is now moved onto this build's grief status,
   and the old key is registered as an alias.
+- Official build: drop a BepInEx-era grief status once the mage has this
+  build's grief, on load and after every sacrifice, so the two no longer stack.
 - BepInEx build: definition keys move to a shared `Keys` class; no change in
   behaviour.
 

@@ -1031,5 +1031,8 @@ internal static class SacrificeCompletionPatch
         Plugin.ModLog.LogInfo(
             $"Sacrificed {__state.SacrificeName}; requested +{__state.Increase} relic cap " +
             $"and applied +{actualIncrease}.");
+#if OFFICIAL_MOD
+        OfficialEntry.DropLegacyGriefDuplicates(Simulation.Instance);
+#endif
     }
 }

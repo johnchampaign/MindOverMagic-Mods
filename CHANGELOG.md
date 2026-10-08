@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased
+
+### Faction Balance 2.0.0 (official mod support)
+
+- Port Faction Balance to the game's own mod support on the `mod_testing`
+  beta, as the YAML-only mod `johnc.factionbalance` in `mods/`. Same balance as
+  the BepInEx defaults, with no code and no BepInEx; the two config settings
+  become values in its YAML files.
+
 ## Bundle v1.2.3 - 2026-10-07
 
 ### Archmage Progression 0.2.1

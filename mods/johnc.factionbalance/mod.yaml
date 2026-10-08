@@ -1,0 +1,10 @@
+modId: johnc.factionbalance
+name: Faction Balance
+author: John Champaign
+version: 2.0.0
+description: Keeps Raven Cultists strong without making a whole school of them automatically best. Raven Cult Power growth drops from S to A, the Shattered rise from A to S, and the Raven Cult trait gives 125 base HP and a 10 damage bonus instead of 150 and 20.
+gameVersion: "1.0.0"
+
+tags:
+  - Balance
+  - Factions

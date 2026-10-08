@@ -1,0 +1,19 @@
+# Stat growth ranks are a dictionary, and a patch cannot reach a single dictionary entry, so
+# these are overrides. An override replaces the whole dictionary, which is why all four stats
+# are written out; only Power differs from the base game.
+
+# Raven Cult: Power S -> A.
+- Id: { Key: Cultist }
+  StatGrowthBases:
+    HP:     { Key: StatGrowth_B }
+    Mana:   { Key: StatGrowth_B }
+    Power:  { Key: StatGrowth_A }
+    Speed:  { Key: StatGrowth_D }
+
+# Shattered: Power A -> S.
+- Id: { Key: Glass }
+  StatGrowthBases:
+    HP:     { Key: StatGrowth_F }
+    Mana:   { Key: StatGrowth_B }
+    Power:  { Key: StatGrowth_S }
+    Speed:  { Key: StatGrowth_B }

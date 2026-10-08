@@ -1,0 +1,15 @@
+# The Raven Cult faction trait. Its stat modifiers are a list of same-typed entries and its
+# combat stats a dictionary; a patch can address neither entry, so both are overridden whole.
+# Only base HP (150 -> 125) and the damage bonus (20 -> 10) differ from the base game.
+- Id: { Key: CultistFaction }
+  CharacterStatModifiers:
+  - ModifiedStat: HP
+    ModifierAmount: 125
+    ModifierAmountIsBase: true
+  - ModifiedStat: Mana
+    ModifierAmount: 110
+    ModifierAmountIsBase: true
+  CombatStats:
+    Stats:
+      DamageBonus: 10
+      CombatSpeed: 10

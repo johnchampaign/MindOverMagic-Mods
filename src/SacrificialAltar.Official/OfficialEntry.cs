@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using System.Reflection;
 using HarmonyLib;
 using Model;
 using Model.Modding;
@@ -40,6 +42,7 @@ internal sealed class ModLogger
 public sealed class OfficialEntry : IMod
 {
     private const string LegacyRitesKey = "SacrificialRites";
+    private const string LegacyGriefKey = "SacrificedMageGrief";
     private DefId<ResearchTechDefinition>? _ritesId;
 
     public void OnInitialize(IModContext context)
@@ -77,6 +80,8 @@ public sealed class OfficialEntry : IMod
         // graph in the BepInEx build never fires here; check the finished graph directly.
         SacrificialRitesGraphValidationPatch.Validate(configBundle.ResearchTechCatalog);
         _ritesId = ritesId;
+        IndexDarkTemple(configBundle.RoomTypeCatalog);
+        AliasLegacyGrief(configBundle.CharacterStatusCatalog);
 
         var harmony = (Harmony)context.HarmonyInstance;
         try
@@ -95,12 +100,132 @@ public sealed class OfficialEntry : IMod
         Plugin.ModLog.LogInfo($"{Plugin.PluginName} {Plugin.PluginVersion} loaded.");
     }
 
+    /// <summary>
+    /// The game builds the ordered list of room types it matches rooms against when its own
+    /// catalog loads, before mod definitions join the catalog, and does not rebuild it. A
+    /// mod's room type is then never recognised even when the Room Goal panel shows every
+    /// requirement met. Rebuild the list once the Dark Temple is in the catalog.
+    /// </summary>
+    private static void IndexDarkTemple(RoomTypeCatalog rooms)
+    {
+        if (rooms.RoomTypesOrdered?.Exists(room => room.Id.Key == Keys.DarkTemple) == true)
+        {
+            return;
+        }
+
+        var rebuild = AccessTools.Method(typeof(RoomTypeCatalog), "PostDeserialize");
+        if (rebuild is null)
+        {
+            Plugin.ModLog.LogError("Could not rebuild the room-type index; rooms will not become Dark Temples.");
+            return;
+        }
+
+        rebuild.Invoke(rooms, null);
+        var indexed = rooms.RoomTypesOrdered?.Exists(room => room.Id.Key == Keys.DarkTemple) == true;
+        if (indexed)
+        {
+            Plugin.ModLog.LogInfo("Rebuilt the room-type index so rooms can be recognised as Dark Temples.");
+        }
+        else
+        {
+            Plugin.ModLog.LogError("The Dark Temple is still missing from the room-type index; rooms will not become Dark Temples.");
+        }
+    }
+
+    /// <summary>
+    /// Saves made with the BepInEx build can carry the grief status under its un-namespaced
+    /// key for two game days after a sacrifice. Register that key too, so those mages resolve
+    /// it; it expires on its own.
+    /// </summary>
+    private static void AliasLegacyGrief(CharacterStatusConfigCatalog catalog)
+    {
+        const string legacyKey = LegacyGriefKey;
+        if (catalog.TryGetDefinitionFromStringKey(legacyKey, out _) ||
+            !catalog.TryGetDefinitionFromStringKey(Keys.Grief, out var grief))
+        {
+            return;
+        }
+
+        var clone = typeof(object).GetMethod("MemberwiseClone", BindingFlags.Instance | BindingFlags.NonPublic);
+        if (clone?.Invoke(grief, null) is not CharacterStatusConfig alias)
+        {
+            Plugin.ModLog.LogWarning("Could not alias the grief status saved by the BepInEx build.");
+            return;
+        }
+
+        alias.Id = new DefId<CharacterStatusConfig>
+        {
+            Key = legacyKey,
+            Uid = DefinitionCatalog<CharacterStatusConfig>.GenerateUid(legacyKey)
+        };
+        catalog.Add(alias);
+    }
+
+    /// <summary>
+    /// A save loads each status by its id, and a grief status saved by the BepInEx build comes
+    /// back with an empty id even with the alias registered, though it still carries its
+    /// definition. The game then fails wherever it looks the status up (the Mage Sheet's gear
+    /// slots stop the sheet drawing), so move each such status onto this build's grief status.
+    /// </summary>
+    private static void RelinkLegacyGrief(Simulation simulation)
+    {
+        if (DefinitionCatalog<CharacterStatusConfig>.Instance is not { } catalog ||
+            !catalog.TryGetDefinitionFromStringKey(Keys.Grief, out var grief))
+        {
+            return;
+        }
+
+        var relinked = 0;
+        var broken = new List<DefId<CharacterStatusConfig>>();
+        try
+        {
+            foreach (var statuses in simulation.ComponentManager.AllEnumerator<CharacterStatusComponent>())
+            {
+                broken.Clear();
+                foreach (var pair in statuses.Statuses)
+                {
+                    if (pair.Key.GetDefinition() is null &&
+                        pair.Value?.Config?.Id.Key is LegacyGriefKey or Keys.Grief)
+                    {
+                        broken.Add(pair.Key);
+                    }
+                }
+
+                foreach (var id in broken)
+                {
+                    var status = statuses.Statuses[id];
+                    statuses.Statuses.Remove(id);
+                    if (!statuses.Statuses.ContainsKey(grief.Id))
+                    {
+                        status.StatusId = grief.Id;
+                        status.Config = grief;
+                        statuses.Statuses[grief.Id] = status;
+                    }
+
+                    relinked++;
+                }
+            }
+        }
+        catch (Exception exception)
+        {
+            Plugin.ModLog.LogError($"Failed to repair grief statuses saved by the BepInEx build: {exception}");
+            return;
+        }
+
+        if (relinked > 0)
+        {
+            Plugin.ModLog.LogInfo($"Repaired {relinked} grief statuses saved by the BepInEx build.");
+        }
+    }
+
     public void OnSimulationStart(Simulation simulation)
     {
     }
 
     public void OnWorldReady(Simulation simulation, SimulationStartReason reason, IModContext context)
     {
+        RelinkLegacyGrief(simulation);
+
         // Saves made with the BepInEx build record the research under its un-namespaced key.
         // Carry it over so the school keeps the altar without researching it again.
         if (reason != SimulationStartReason.LoadedSave || _ritesId is not { } ritesId ||

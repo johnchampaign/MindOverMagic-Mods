@@ -407,7 +407,7 @@ loading correctly.
 - Search `LogOutput.log` for `Character Level Relics`, `Faction Balance`,
   `Sacrificial Altar`, or `Archmage Progression`.
 - If rank badges never appear, confirm the file `BepInEx\plugins\ArchmageProgression\Content\CharacterStatus\archmage_ranks.yaml`
-  exists and look for an `Injected 26 Archmage Progression statuses` line in the log.
+  exists and look for an `Injected 92 Archmage Progression statuses` line in the log.
 - The altar will not appear in the build menu until Sacrificial Rites has been
   completed in that school.
 - Back up affected saves and report the game build, mod versions, and relevant

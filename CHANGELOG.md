@@ -10,6 +10,13 @@
   Rites research, load from `Defs/`; the runtime-built altar model is listed
   with the game's prefabs so reference checks pass; saves from the BepInEx build
   keep a completed Sacrificial Rites.
+- Official build: rebuild the game's room-type index once the Dark Temple has
+  loaded. The beta indexes room types before mod definitions join the catalog,
+  so a room with every requirement met still stayed a School Room.
+- Official build: repair grief statuses saved by the BepInEx build. They load
+  with an empty id, which stopped the Mage Sheet drawing and accepting input
+  for every grieving mage; each is now moved onto this build's grief status,
+  and the old key is registered as an alias.
 - BepInEx build: definition keys move to a shared `Keys` class; no change in
   behaviour.
 
@@ -23,6 +30,23 @@
 
 ### Archmage Progression 0.3.0
 
+- Fix a simulation crash ("An item with the same key has already been added")
+  as soon as one mage taught another while the Council's Scholarship was in
+  force (five or more Archmage ranks by default). The game totals a lesson's
+  bonuses in one table keyed by status, the student's learning bonuses and then
+  the teacher's teaching bonuses, and Scholarship was one status carrying both.
+  It is now two: Scholarship for learning and a hidden companion for teaching.
+  Affects the BepInEx releases since Bundle v1.2.2 as well; released for them
+  in Bundle v1.2.4 from the `hotfix/v1.2.4` branch.
+- BepInEx build: restore the live archetype catalog after injecting the Nexus
+  Gateway and Waters of Return. Without Sacrificial Altar installed, the
+  temporary catalog stayed current and the game's ingredient index threw during
+  startup. Also released in Bundle v1.2.4.
+- Official build: swap statuses saved by the BepInEx build as soon as a save
+  loads instead of on the first unpaused sweep, and on every load report, and
+  re-link where possible, any status a character carries whose definition is
+  missing. The game looks statuses up without a null check, so one such status
+  breaks screens such as the Mage Sheet.
 - Port to the game's own mod support on the `mod_testing` beta as
   `johnc.archmageprogression`, built from the same source as the BepInEx
   module by `src/ArchmageProgression.Official`. Statuses and buildings load

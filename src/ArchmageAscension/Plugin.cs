@@ -950,6 +950,83 @@ internal static class LegacyStatuses
     private static readonly List<string> Keys = new();
     private static Simulation? _migrated;
 
+    /// <summary>
+    /// Find, once per load, every status a character carries whose id resolves to no
+    /// definition. The game looks statuses up without a null check (the Mage Sheet's gear
+    /// slots, for one), so one such status breaks screens for that character. Re-link it when
+    /// the status still carries its definition or its id matches a known one; log the rest.
+    /// </summary>
+    internal static void ReportUnresolved(Simulation simulation)
+    {
+        var details = new Dictionary<string, int>();
+        var repaired = 0;
+        try
+        {
+            var byUid = new Dictionary<long, CharacterStatusConfig>();
+            if (DefinitionCatalog<CharacterStatusConfig>.Instance is { } catalog)
+            {
+                foreach (var definition in catalog.AllDefinitions())
+                {
+                    if (definition is not null)
+                    {
+                        byUid[definition.Id.Uid] = definition;
+                    }
+                }
+            }
+
+            var broken = new List<KeyValuePair<DefId<CharacterStatusConfig>, CharacterStatus>>();
+            foreach (var statuses in simulation.ComponentManager.AllEnumerator<CharacterStatusComponent>())
+            {
+                broken.Clear();
+                foreach (var pair in statuses.Statuses)
+                {
+                    if (pair.Key.GetDefinition() is null)
+                    {
+                        broken.Add(pair);
+                    }
+                }
+
+                foreach (var pair in broken)
+                {
+                    var status = pair.Value;
+                    var target = status?.Config is { } config && config.Id.GetDefinition() is not null
+                        ? config
+                        : byUid.TryGetValue(pair.Key.Uid, out var match) ? match : null;
+                    var detail = $"key={pair.Key.Key ?? "<none>"} uid={pair.Key.Uid} " +
+                                 $"statusId={status?.StatusId.Key ?? "<none>"} config={status?.Config?.Id.Key ?? "<none>"} " +
+                                 $"persistent={status?.Persistent} relinked={(target?.Id.Key ?? "no")}";
+                    details[detail] = details.TryGetValue(detail, out var count) ? count + 1 : 1;
+                    if (target is null || status is null)
+                    {
+                        continue;
+                    }
+
+                    statuses.Statuses.Remove(pair.Key);
+                    if (!statuses.Statuses.ContainsKey(target.Id))
+                    {
+                        status.StatusId = target.Id;
+                        status.Config = target;
+                        statuses.Statuses[target.Id] = status;
+                    }
+
+                    repaired++;
+                }
+            }
+        }
+        catch (Exception exception)
+        {
+            Plugin.ModLog.LogError($"Failed to check characters for undefined statuses: {exception}");
+            return;
+        }
+
+        if (details.Count > 0)
+        {
+            Plugin.ModLog.LogWarning(
+                $"Characters carried statuses whose definitions could not be found ({repaired} re-linked): " +
+                string.Join("; ", details.Select(pair => $"{pair.Key} x{pair.Value}")) + ".");
+        }
+    }
+
     internal static void Migrate(Simulation simulation)
     {
         if (ReferenceEquals(_migrated, simulation))
@@ -1229,6 +1306,11 @@ internal static class SchoolPowers
     internal const string ResolveKey = Plugin.KeyPrefix + "ArchmageProgression_CouncilEffect_Conviction";
     internal const string ScholarshipKey = Plugin.KeyPrefix + "ArchmageProgression_CouncilEffect_Scholarship";
 
+    // Teaching half of Scholarship, kept apart from the learning half: the game totals a
+    // lesson's bonuses in one table keyed by status, so one status carrying both a learning
+    // and a teaching bonus is added twice when a Council mage teaches another and crashes.
+    internal const string ScholarshipTeachKey = Plugin.KeyPrefix + "ArchmageProgression_CouncilEffect_ScholarshipTeach";
+
     private static int _lastCouncilCount = -1;
 
     /// <summary>The school's Archmage rank count from the latest sweep.</summary>
@@ -1261,6 +1343,7 @@ internal static class SchoolPowers
 
         yield return ResolveKey;
         yield return ScholarshipKey;
+        yield return ScholarshipTeachKey;
         for (var count = 1; count <= CouncilBadgeLevels; count++)
         {
             yield return BadgeKey(count);
@@ -1371,10 +1454,18 @@ internal static class SchoolPowers
             return true;
         }
 
-        if (key == ScholarshipKey)
+        if (key == ScholarshipTeachKey)
         {
             var bonus = Plugin.CouncilScholarshipSpeedBonus.Value;
             definition.TeachBonusPct = bonus;
+            SetDescription(definition, text => text
+                .Replace("{Percent}", SchoolRanks.Number(bonus * 100f) + "%"));
+            return true;
+        }
+
+        if (key == ScholarshipKey)
+        {
+            var bonus = Plugin.CouncilScholarshipSpeedBonus.Value;
             if (definition.SkillProgressModifiers is { } skills)
             {
                 foreach (var modifier in skills)
@@ -1529,6 +1620,7 @@ internal static class SchoolPowers
                 natureBonus ? Math.Min(Math.Max(others, 0), NatureEmbraceLevels) : 0);
             SetPresent(statuses, ResolveKey, resolve);
             SetPresent(statuses, ScholarshipKey, scholarship);
+            SetPresent(statuses, ScholarshipTeachKey, scholarship);
         }
 
         var badge = Plugin.CouncilEnabled.Value ? Math.Min(councilCount, CouncilBadgeLevels) : 0;
@@ -2456,6 +2548,11 @@ internal static class NexusGatewayCatalogPatch
         }
         finally
         {
+            // A catalog's constructor makes it the static current instance. Hand that back to
+            // the live catalog, or later lookups such as the ingredient index resolve
+            // archetypes against the two-entry temporary one and throw.
+            ConfigData.Instance = __instance;
+            DefinitionCatalog<Archetype>.Instance = __instance;
             _loadingMod = false;
         }
     }

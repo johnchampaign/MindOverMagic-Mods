@@ -676,6 +676,17 @@ removes every status that lists <code>Terrain_Sanctified</code> there. Using
 <code>CharacterStatusUtils.IsStatusAllowed</code> blocks them for immunity, and
 a postfix on <code>BattleUtils.OnRoundStart</code> can strip them each round.
 
+### Never put a learning and a teaching bonus on one status
+
+<code>SkillsUtils.SkillChangeForLearn</code> totals a lesson's bonuses in one
+dictionary keyed by status id. It first adds the student's statuses that have
+<code>SkillProgressModifiers</code>, then <code>Add</code>s every teacher status
+whose <code>TeachBonusPct</code> is non-zero. A single status carrying both,
+held by teacher and student alike, is added twice and the simulation halts
+with "An item with the same key has already been added". Give each bonus its
+own status, and give the same school-wide status to every mage only when it
+carries one kind of bonus.
+
 ### Reading iterator state without hard-coded names
 
 Hooking a compiler-generated iterator such as

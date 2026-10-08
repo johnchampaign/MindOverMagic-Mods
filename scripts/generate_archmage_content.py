@@ -155,13 +155,20 @@ def school_wide():
         "ArchmageProgression_CouncilEffect_Conviction", "Info", "Archmage Council: Resolve",
         "The school's Archmage Council steadies every mage: +{Bonus} <slink=Mood> target.",
         mood())
+    # Scholarship is two statuses. The game totals a lesson's bonuses in one table keyed by
+    # status: the student's learning bonuses first, then the teacher's teaching bonuses. A
+    # single status carrying both would be added twice when one Council mage teaches
+    # another, which crashes the simulation.
     lines += status(
         "ArchmageProgression_CouncilEffect_Scholarship", "Info", "Archmage Council: Scholarship",
         "The Archmage Council speeds study: teaching and learning are {Percent} faster.",
-        ["  TeachBonusPct: 1",
-         "  SkillProgressModifiers:", "  - Skill: None", "    ModifierAmount: 1",
+        ["  SkillProgressModifiers:", "  - Skill: None", "    ModifierAmount: 1",
          "    Conditions:", "    - Condition: Learning",
          "  WorkProgressModifiers:", "  - JobType: Learn", "    ModifierPercentage: 1"])
+    lines += status(
+        "ArchmageProgression_CouncilEffect_ScholarshipTeach", "None", "Archmage Council: Scholarship",
+        "The Archmage Council speeds teaching: lessons are {Percent} more effective.",
+        ["  TeachBonusPct: 1"])
     for count in range(1, COUNCIL_BADGE_LEVELS + 1):
         shown = f"{count}+" if count == COUNCIL_BADGE_LEVELS else str(count)
         lines += status(

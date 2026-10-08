@@ -122,6 +122,11 @@ public sealed class OfficialEntry : IMod, IModSettingsUI
 
     public void OnWorldReady(Simulation simulation, SimulationStartReason reason, IModContext context)
     {
+        // Swap statuses saved by the BepInEx build straight away rather than on the first
+        // sweep, which waits for the game to be unpaused.
+        LegacyStatuses.ReportUnresolved(simulation);
+        LegacyStatuses.Migrate(simulation);
+
         // Every game-second, the cadence of the game's own skill-status system that the
         // BepInEx build piggybacks on.
         context.RegisterSimulationProcess(simulation, "Archmage Progression sweep", new Sweep(), 1f, 0f);

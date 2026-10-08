@@ -90,7 +90,7 @@ Mages raised by the fountain remain ordinary mages.
 
 [h2]Troubleshooting[/h2]
 [list]
-[*][code]BepInEx\LogOutput.log[/code] should include "Injected 91 Archmage Progression statuses".
+[*][code]BepInEx\LogOutput.log[/code] should include "Injected 92 Archmage Progression statuses".
 [*]Ranks and Council effects need the game to be unpaused for a few seconds after loading.
 [*]When reporting a problem, include the game build, mod versions, and the relevant log lines.
 [/list]

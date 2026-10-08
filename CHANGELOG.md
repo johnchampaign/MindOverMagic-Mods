@@ -1,5 +1,17 @@
 # Changelog
 
+## Bundle v1.2.4 - 2026-10-08
+
+### Archmage Progression 0.2.2
+
+- Fix a simulation crash ("An item with the same key has already been added")
+  as soon as one mage taught another while the Council's Scholarship was in
+  force (five or more Archmage ranks by default). The game totals a lesson's
+  bonuses in one table keyed by status, the student's learning bonuses and then
+  the teacher's teaching bonuses, and Scholarship was one status carrying both.
+  It is now two: Scholarship for learning and a hidden companion for teaching.
+  The speed-up is unchanged.
+
 ## Bundle v1.2.3 - 2026-10-07
 
 ### Archmage Progression 0.2.1

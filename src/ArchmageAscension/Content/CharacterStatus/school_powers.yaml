@@ -351,7 +351,6 @@
   Beneficial: true
   Persistent: true
   KeepOnAdultify: true
-  TeachBonusPct: 1
   SkillProgressModifiers:
   - Skill: None
     ModifierAmount: 1
@@ -360,6 +359,20 @@
   WorkProgressModifiers:
   - JobType: Learn
     ModifierPercentage: 1
+
+- Id: { Key: ArchmageProgression_CouncilEffect_ScholarshipTeach }
+  DisplayType: None
+  DisplayName:
+    Text: "Archmage Council: Scholarship"
+    Key: Mod.ArchmageProgression_CouncilEffect_ScholarshipTeach.DisplayName
+  Description:
+    Text: "The Archmage Council speeds teaching: lessons are {Percent} more effective."
+    Key: Mod.ArchmageProgression_CouncilEffect_ScholarshipTeach.Description
+  ShownInGroupRules: false
+  Beneficial: true
+  Persistent: true
+  KeepOnAdultify: true
+  TeachBonusPct: 1
 
 - Id: { Key: ArchmageProgression_CouncilBadge_1 }
   DisplayType: Alert

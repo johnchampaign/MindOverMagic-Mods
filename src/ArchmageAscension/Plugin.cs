@@ -24,7 +24,7 @@ public sealed class Plugin : BaseUnityPlugin
 {
     public const string PluginGuid = "ca.johnc.mindovermagic.archmageprogression";
     public const string PluginName = "Archmage Progression";
-    public const string PluginVersion = "0.2.1";
+    public const string PluginVersion = "0.2.2";
 
     internal static ManualLogSource ModLog { get; private set; } = null!;
     internal static ConfigEntry<float> ManaPerPyromancy { get; private set; } = null!;
@@ -1396,6 +1396,11 @@ internal static class SchoolPowers
     internal const string ResolveKey = "ArchmageProgression_CouncilEffect_Conviction";
     internal const string ScholarshipKey = "ArchmageProgression_CouncilEffect_Scholarship";
 
+    // Teaching half of Scholarship, kept apart from the learning half: the game totals a
+    // lesson's bonuses in one table keyed by status, so one status carrying both a learning
+    // and a teaching bonus is added twice when a Council mage teaches another and crashes.
+    internal const string ScholarshipTeachKey = "ArchmageProgression_CouncilEffect_ScholarshipTeach";
+
     private static int _lastCouncilCount = -1;
 
     /// <summary>The school's Archmage rank count from the latest sweep.</summary>
@@ -1428,6 +1433,7 @@ internal static class SchoolPowers
 
         yield return ResolveKey;
         yield return ScholarshipKey;
+        yield return ScholarshipTeachKey;
         for (var count = 1; count <= CouncilBadgeLevels; count++)
         {
             yield return BadgeKey(count);
@@ -1538,10 +1544,18 @@ internal static class SchoolPowers
             return true;
         }
 
-        if (key == ScholarshipKey)
+        if (key == ScholarshipTeachKey)
         {
             var bonus = Plugin.CouncilScholarshipSpeedBonus.Value;
             definition.TeachBonusPct = bonus;
+            SetDescription(definition, text => text
+                .Replace("{Percent}", SchoolRanks.Number(bonus * 100f) + "%"));
+            return true;
+        }
+
+        if (key == ScholarshipKey)
+        {
+            var bonus = Plugin.CouncilScholarshipSpeedBonus.Value;
             if (definition.SkillProgressModifiers is { } skills)
             {
                 foreach (var modifier in skills)
@@ -1696,6 +1710,7 @@ internal static class SchoolPowers
                 natureBonus ? Math.Min(Math.Max(others, 0), NatureEmbraceLevels) : 0);
             SetPresent(statuses, ResolveKey, resolve);
             SetPresent(statuses, ScholarshipKey, scholarship);
+            SetPresent(statuses, ScholarshipTeachKey, scholarship);
         }
 
         var badge = Plugin.CouncilEnabled.Value ? Math.Min(councilCount, CouncilBadgeLevels) : 0;

@@ -16,7 +16,7 @@ by Sparkypants Studios or Klei Entertainment.
 | Character Level Relics | 1.1.0 | Bases manifested relic level caps on the mage's level and completed trials instead of wand tier. |
 | Faction Balance | 1.0.0 | Reduces the Raven Cult's universal advantages and gives the Shattered the strongest Power growth. |
 | Sacrificial Altar | 1.3.7 | Adds a buildable altar, dedicated Sacrificial Rites research, sacrificial relic-upgrade ritual, Dark Temple room, custom model, and room treatment. |
-| Archmage Progression | 0.2.1 | Per-skill bonuses, Adept and Archmage ranks with powers, and a school-wide Archmage Council, without editing base-game files. |
+| Archmage Progression | 0.2.2 | Per-skill bonuses, Adept and Archmage ranks with powers, and a school-wide Archmage Council, without editing base-game files. |
 
 The modules do not depend on one another. Install any combination of them.
 
@@ -407,7 +407,7 @@ loading correctly.
 - Search `LogOutput.log` for `Character Level Relics`, `Faction Balance`,
   `Sacrificial Altar`, or `Archmage Progression`.
 - If rank badges never appear, confirm the file `BepInEx\plugins\ArchmageProgression\Content\CharacterStatus\archmage_ranks.yaml`
-  exists and look for an `Injected 26 Archmage Progression statuses` line in the log.
+  exists and look for an `Injected 92 Archmage Progression statuses` line in the log.
 - The altar will not appear in the build menu until Sacrificial Rites has been
   completed in that school.
 - Back up affected saves and report the game build, mod versions, and relevant

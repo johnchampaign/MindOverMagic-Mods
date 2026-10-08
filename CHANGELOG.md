@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+### Archmage Progression 0.3.0
+
+- Port to the game's own mod support on the `mod_testing` beta as
+  `johnc.archmageprogression`, built from the same source as the BepInEx
+  module by `src/ArchmageProgression.Official`. Statuses and buildings load
+  from `Defs/`, settings appear on the Mods screen, and the periodic sweep is a
+  registered simulation process. Saves from the BepInEx build keep loading:
+  their statuses are aliased and replaced on the first sweep.
+- BepInEx build: settings, logging and identity move to `Settings.cs` and the
+  plugin class to `BepInExEntry.cs`; no change in behaviour, and existing
+  `.cfg` values carry over.
+
 ### Faction Balance 2.0.0 (official mod support)
 
 - Port Faction Balance to the game's own mod support on the `mod_testing`

@@ -5,268 +5,10 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
-using BepInEx;
-using BepInEx.Configuration;
-using BepInEx.Logging;
 using HarmonyLib;
 using Model;
 
 namespace ArchmageProgression;
-
-/// <summary>
-/// An independently authored, source-available late-game progression module.
-/// It deliberately implements only mechanics whose game hooks are understood
-/// and tested; unverified features are never simulated by editing save data or
-/// base-game YAML files.
-/// </summary>
-[BepInPlugin(PluginGuid, PluginName, PluginVersion)]
-public sealed class Plugin : BaseUnityPlugin
-{
-    public const string PluginGuid = "ca.johnc.mindovermagic.archmageprogression";
-    public const string PluginName = "Archmage Progression";
-    public const string PluginVersion = "0.2.1";
-
-    internal static ManualLogSource ModLog { get; private set; } = null!;
-    internal static ConfigEntry<float> ManaPerPyromancy { get; private set; } = null!;
-    internal static ConfigEntry<float> HitPointsPerGeomancy { get; private set; } = null!;
-    internal static ConfigEntry<float> DamagePerDivination { get; private set; } = null!;
-    internal static ConfigEntry<float> DodgePerManipulation { get; private set; } = null!;
-    internal static ConfigEntry<float> RegenPerHydrokinesis { get; private set; } = null!;
-    internal static ConfigEntry<float> NeedDecayReductionPerNecromancy { get; private set; } = null!;
-    internal static ConfigEntry<float> ConvictionPerViturgy { get; private set; } = null!;
-    internal static ConfigEntry<bool> StatBreakdownEnabled { get; private set; } = null!;
-    internal static ConfigEntry<bool> RankStatusesEnabled { get; private set; } = null!;
-    internal static ConfigEntry<int> AdeptSkillLevel { get; private set; } = null!;
-    internal static ConfigEntry<int> ArchmageSkillLevel { get; private set; } = null!;
-    internal static ConfigEntry<float> AirWalkSpeedMultiplier { get; private set; } = null!;
-    internal static ConfigEntry<bool> AirArchmageGhostMovement { get; private set; } = null!;
-    internal static ConfigEntry<float> FireCookingSpeedBonus { get; private set; } = null!;
-    internal static ConfigEntry<bool> FireBattleCounterattack { get; private set; } = null!;
-    internal static ConfigEntry<bool> DarkArchmageNeedsSated { get; private set; } = null!;
-    internal static ConfigEntry<float> NatureArchmageConvictionToOthers { get; private set; } = null!;
-    internal static ConfigEntry<float> EarthAdeptBattleArmour { get; private set; } = null!;
-    internal static ConfigEntry<bool> EarthArchmageImmunity { get; private set; } = null!;
-    internal static ConfigEntry<bool> WaterAdeptCleanse { get; private set; } = null!;
-    internal static ConfigEntry<bool> LightningArchmageFreeSpells { get; private set; } = null!;
-    internal static ConfigEntry<float> DarkAdeptLifesteal { get; private set; } = null!;
-    internal static ConfigEntry<float> DarkAdeptHealOnEnemyDeath { get; private set; } = null!;
-    internal static ConfigEntry<float> NatureAdeptLuxury { get; private set; } = null!;
-    internal static ConfigEntry<bool> LightningAdeptManaVein { get; private set; } = null!;
-    internal static ConfigEntry<bool> FireArchmageRenewal { get; private set; } = null!;
-    internal static ConfigEntry<float> FireRenewalIntervalHours { get; private set; } = null!;
-    internal static ConfigEntry<float> FireRenewalConviction { get; private set; } = null!;
-    internal static ConfigEntry<int> DarkArchmageBountyAmount { get; private set; } = null!;
-    internal static ConfigEntry<string> DarkArchmageBountyReagents { get; private set; } = null!;
-    internal static ConfigEntry<bool> EarthArchmageNexusGateways { get; private set; } = null!;
-    internal static ConfigEntry<bool> WaterArchmageWatersOfReturn { get; private set; } = null!;
-    internal static ConfigEntry<int> CouncilRematchArchmages { get; private set; } = null!;
-    internal static ConfigEntry<int> CouncilScoutingArchmages { get; private set; } = null!;
-    internal static ConfigEntry<float> CouncilTravelCutPerArchmage { get; private set; } = null!;
-    internal static ConfigEntry<int> CouncilRefiningArchmages { get; private set; } = null!;
-    internal static ConfigEntry<float> CouncilRefiningMultiplier { get; private set; } = null!;
-    internal static ConfigEntry<int> CouncilMendingArchmages { get; private set; } = null!;
-    internal static ConfigEntry<float> CouncilMendingMultiplier { get; private set; } = null!;
-    internal static ConfigEntry<int> CouncilSteadyMindsArchmages { get; private set; } = null!;
-    internal static ConfigEntry<bool> CouncilEnabled { get; private set; } = null!;
-    internal static ConfigEntry<int> CouncilResolveArchmages { get; private set; } = null!;
-    internal static ConfigEntry<float> CouncilResolveConviction { get; private set; } = null!;
-    internal static ConfigEntry<int> CouncilScholarshipArchmages { get; private set; } = null!;
-    internal static ConfigEntry<float> CouncilScholarshipSpeedBonus { get; private set; } = null!;
-
-    private void Awake()
-    {
-        ModLog = Logger;
-        ManaPerPyromancy = Config.Bind(
-            "Per-skill bonuses", "Mana per Pyromancy", 5f,
-            "Maximum Mana added for each Pyromancy skill level. Restart required.");
-        HitPointsPerGeomancy = Config.Bind(
-            "Per-skill bonuses", "HP per Geomancy", 5f,
-            "Maximum HP added for each Geomancy skill level. Restart required.");
-        DamagePerDivination = Config.Bind(
-            "Per-skill bonuses", "Damage bonus per Divination", 2f,
-            "Combat Damage Bonus added for each Divination skill level. Restart required.");
-        DodgePerManipulation = Config.Bind(
-            "Per-skill bonuses", "Dodge per Manipulation", 2f,
-            "Combat Dodge Chance added for each Manipulation skill level. Restart required.");
-        RegenPerHydrokinesis = Config.Bind(
-            "Per-skill bonuses", "Combat regeneration per Hydrokinesis", 1f,
-            "Combat regeneration added for each Hydrokinesis skill level. Restart required.");
-        NeedDecayReductionPerNecromancy = Config.Bind(
-            "Per-skill bonuses", "Need decay reduction per Necromancy", 0.02f,
-            "Fractional reduction to need decay for each Necromancy skill level (0.02 = 2%). Restart required.");
-        ConvictionPerViturgy = Config.Bind(
-            "Per-skill bonuses", "Conviction per Viturgy", 2f,
-            "Conviction target added for each Viturgy (Nature) skill level. It appears as " +
-            "'Viturgy Attunement' in the Status & Conviction panel. Set to 0 to disable. Restart required.");
-        StatBreakdownEnabled = Config.Bind(
-            "Stat breakdown", "Enabled", true,
-            "List each school's contribution in the game's stat hover text: the HP and Mana bars " +
-            "on the selected-mage panel, and the stat icons on the Mage Sheet. Restart required.");
-
-        RankStatusesEnabled = Config.Bind(
-            "Rank statuses", "Enabled", true,
-            "Show an Adept or Archmage status on each mage for every magic school they have " +
-            "trained far enough. The statuses are informational badges; the per-skill bonuses " +
-            "above apply regardless. Restart required.");
-        AdeptSkillLevel = Config.Bind(
-            "Rank statuses", "Adept skill level", 5,
-            "Skill level at which a mage earns the Adept rank for a school. Set to 0 to " +
-            "disable the Adept rank. Restart required.");
-        ArchmageSkillLevel = Config.Bind(
-            "Rank statuses", "Archmage skill level", 8,
-            "Skill level at which a mage earns the Archmage rank for a school. The base game " +
-            "caps skills at 8. Set to 0 to disable the Archmage rank. Restart required.");
-
-        AirWalkSpeedMultiplier = Config.Bind(
-            "Rank powers", "Air Adept walk speed multiplier", 2f,
-            "Walking speed multiplier for Adepts and Archmages of Manipulation (Air). " +
-            "1 disables. Restart required.");
-        AirArchmageGhostMovement = Config.Bind(
-            "Rank powers", "Air Archmage flight and phasing", true,
-            "Archmages of Manipulation fly and pass through walls and floors, like the school's " +
-            "founder. Restart required.");
-        FireCookingSpeedBonus = Config.Bind(
-            "Rank powers", "Fire Adept cooking speed bonus", 1f,
-            "Extra cooking speed for Adepts and Archmages of Pyromancy (Fire): 1 = twice as fast. " +
-            "0 disables. Restart required.");
-        FireBattleCounterattack = Config.Bind(
-            "Rank powers", "Fire Adept battle counterattack", true,
-            "Adepts and Archmages of Pyromancy start every battle with Counterattack for two " +
-            "rounds. Restart required.");
-        DarkArchmageNeedsSated = Config.Bind(
-            "Rank powers", "Dark Archmage needs stay sated", true,
-            "Archmages of Necromancy (Dark) suffer no ordinary need decay. Conviction and Mana " +
-            "are unaffected. Restart required.");
-        NatureArchmageConvictionToOthers = Config.Bind(
-            "Rank powers", "Nature Archmage Conviction to others", 5f,
-            "Conviction target every other mage gains from each Archmage of Viturgy (Nature). " +
-            "0 disables. Restart required.");
-        EarthAdeptBattleArmour = Config.Bind(
-            "Rank powers", "Earth Adept battle armour", 0.5f,
-            "Armour granted to Adepts and Archmages of Geomancy (Earth) at the start of every " +
-            "battle, as a fraction of Max HP (0.5 = 50%). 0 disables. Restart required.");
-        EarthArchmageImmunity = Config.Bind(
-            "Rank powers", "Earth Archmage immunity", true,
-            "Archmages of Geomancy cannot be given harmful combat effects (the debuffs the " +
-            "Sanctified terrain cleanses, such as Stunned, Blinded, Burns and Fear). Restart required.");
-        WaterAdeptCleanse = Config.Bind(
-            "Rank powers", "Water Adept cleanse", true,
-            "Adepts and Archmages of Hydrokinesis (Water) shed harmful combat effects at the " +
-            "start of every battle round. Restart required.");
-        LightningArchmageFreeSpells = Config.Bind(
-            "Rank powers", "Lightning Archmage free spells", true,
-            "Archmages of Divination (Lightning) cast every spell, in battle or at school, " +
-            "without spending mana. Restart required.");
-        DarkAdeptLifesteal = Config.Bind(
-            "Rank powers", "Dark Adept lifesteal", 0.1f,
-            "Share of the damage their spells deal that Adepts and Archmages of Necromancy " +
-            "(Dark) regain as HP (0.1 = 10%). 0 disables. Restart required.");
-        DarkAdeptHealOnEnemyDeath = Config.Bind(
-            "Rank powers", "Dark Adept heal on enemy death", 25f,
-            "HP Adepts and Archmages of Necromancy regain whenever a foe falls in battle. " +
-            "0 disables. Restart required.");
-        NatureAdeptLuxury = Config.Bind(
-            "Rank powers", "Nature Adept room Luxury", 2f,
-            "Luxury added to every room while the school has at least one Adept or Archmage " +
-            "of Viturgy (Nature). Does not stack. 0 disables. Restart required.");
-        LightningAdeptManaVein = Config.Bind(
-            "Rank powers", "Lightning Adept mana vein", true,
-            "Adepts and Archmages of Divination (Lightning) start every battle standing on a " +
-            "mana vein, which halves spell costs while they stay on it. Restart required.");
-        FireArchmageRenewal = Config.Bind(
-            "Rank powers", "Fire Archmage renewal", true,
-            "Archmages of Pyromancy (Fire) periodically burn away one of their own traumas, or " +
-            "failing that a scar, and are Renewed by Flame. Restart required.");
-        FireRenewalIntervalHours = Config.Bind(
-            "Rank powers", "Fire Archmage renewal interval (game hours)", 24f,
-            "Game hours between two renewals for the same Archmage. Restart required.");
-        FireRenewalConviction = Config.Bind(
-            "Rank powers", "Fire Archmage renewal Conviction", 10f,
-            "Conviction target granted by Renewed by Flame for a day. Restart required.");
-        DarkArchmageBountyAmount = Config.Bind(
-            "Rank powers", "Dark Archmage reagent bounty amount", 5,
-            "Reagents each Archmage of Necromancy (Dark) gathers at midnight and at noon, " +
-            "delivered to the school entrance. 0 disables. Restart required.");
-        DarkArchmageBountyReagents = Config.Bind(
-            "Rank powers", "Dark Archmage reagent bounty reagents",
-            "Voidcap,MandrakeRoot,Bile,Brains,Viscera,ReapersCap",
-            "Comma-separated item keys; each bounty picks one at random. Restart required.");
-        EarthArchmageNexusGateways = Config.Bind(
-            "Rank powers", "Earth Archmage Nexus Gateways", true,
-            "While the school has an Archmage of Geomancy (Earth), Nexus Gateways can be built. " +
-            "Gateways teleport to each other. Restart required.");
-        WaterArchmageWatersOfReturn = Config.Bind(
-            "Rank powers", "Water Archmage Waters of Return", true,
-            "While the school has an Archmage of Hydrokinesis (Water), the Waters of Return " +
-            "fountain can be built. Its ritual raises the mage buried in a grave in the same " +
-            "room. Restart required.");
-
-        CouncilEnabled = Config.Bind(
-            "Archmage Council", "Enabled", true,
-            "School-wide powers based on how many Archmage ranks the school holds in total. " +
-            "The school's founder shows an 'Archmage Council' badge listing the powers in " +
-            "force. Restart required.");
-        CouncilResolveArchmages = Config.Bind(
-            "Archmage Council", "Resolve: Archmage ranks needed", 3,
-            "Archmage ranks the school needs before every mage gains the Resolve bonus. " +
-            "0 disables. Restart required.");
-        CouncilResolveConviction = Config.Bind(
-            "Archmage Council", "Resolve: Conviction bonus", 10f,
-            "Conviction target every mage gains from Resolve. Restart required.");
-        CouncilScholarshipArchmages = Config.Bind(
-            "Archmage Council", "Scholarship: Archmage ranks needed", 5,
-            "Archmage ranks the school needs before teaching and learning speed up. " +
-            "0 disables. Restart required.");
-        CouncilScholarshipSpeedBonus = Config.Bind(
-            "Archmage Council", "Scholarship: speed bonus", 1f,
-            "Extra teaching and learning speed from Scholarship: 1 = twice as fast. Restart required.");
-        CouncilRefiningArchmages = Config.Bind(
-            "Archmage Council", "Refining: Archmage ranks needed", 2,
-            "Archmage ranks the school needs before refineries hand back more. 0 disables. Restart required.");
-        CouncilRefiningMultiplier = Config.Bind(
-            "Archmage Council", "Refining: output multiplier", 2f,
-            "Output multiplier for the Earth, Air, Fire and Dark refineries. Restart required.");
-        CouncilMendingArchmages = Config.Bind(
-            "Archmage Council", "Mending: Archmage ranks needed", 6,
-            "Archmage ranks the school needs before wounds close faster. 0 disables. Restart required.");
-        CouncilMendingMultiplier = Config.Bind(
-            "Archmage Council", "Mending: healing speed multiplier", 3f,
-            "How much faster wounds (trauma injuries) close. Restart required.");
-        CouncilSteadyMindsArchmages = Config.Bind(
-            "Archmage Council", "Steady Minds: Archmage ranks needed", 7,
-            "Archmage ranks the school needs before mental breaks stop leaving mages At " +
-            "Death's Door. 0 disables. Restart required.");
-        CouncilRematchArchmages = Config.Bind(
-            "Archmage Council", "Rematch: Archmage ranks needed", 1,
-            "Archmage ranks the school needs before boss rematches pay the first-victory rewards, " +
-            "relic included. 0 disables. Restart required.");
-        CouncilScoutingArchmages = Config.Bind(
-            "Archmage Council", "Open Ledgers: Archmage ranks needed", 4,
-            "Archmage ranks the school needs before scouting a faction reveals every side quest " +
-            "instead of two. 0 disables. Restart required.");
-        CouncilTravelCutPerArchmage = Config.Bind(
-            "Archmage Council", "Swift Travel: cut per Archmage rank", 0.1f,
-            "Share of remaining quest travel removed per Archmage rank (0.1 = a tenth each; ten " +
-            "ranks bring parties home at once). 0 disables. Restart required.");
-
-        var harmony = new Harmony(PluginGuid);
-        try
-        {
-            harmony.PatchAll();
-        }
-        catch (Exception exception)
-        {
-            // PatchAll may have applied earlier patches before a later invalid target
-            // fails. Undo them so a game update cannot leave a partial mod active.
-            harmony.UnpatchSelf();
-            Logger.LogError($"{PluginName} was safely disabled during initialization: {exception}");
-            enabled = false;
-            return;
-        }
-
-        Logger.LogInfo($"{PluginName} {PluginVersion} loaded: passive magic-school scaling is active.");
-    }
-}
 
 internal static class SkillValues
 {
@@ -355,11 +97,15 @@ internal static class SchoolRanks
 
     private static bool _unavailableLogged;
 
+#if OFFICIAL_MOD
+    internal static string ContentRoot => "the mod's Defs folder";
+#else
     internal static string ContentRoot =>
         Path.Combine(Path.GetDirectoryName(typeof(Plugin).Assembly.Location) ?? string.Empty, "Content");
+#endif
 
     internal static string StatusKey(Skill school, string rank) =>
-        $"ArchmageProgression_{school}_{rank}";
+        $"{Plugin.KeyPrefix}ArchmageProgression_{school}_{rank}";
 
     internal static int Threshold(string rank) =>
         rank == ArchmageRank ? Plugin.ArchmageSkillLevel.Value : Plugin.AdeptSkillLevel.Value;
@@ -557,7 +303,7 @@ internal static class RankPowers
         (!archmageOnly &&
          CharacterStatusUtils.HasStatusKey(SchoolRanks.StatusKey(school, SchoolRanks.AdeptRank), statuses));
 
-    internal const string BulwarkKey = "ArchmageProgression_EarthBulwark";
+    internal const string BulwarkKey = Plugin.KeyPrefix + "ArchmageProgression_EarthBulwark";
 
     private static string Percent(float fraction) => SchoolRanks.Number(fraction * 100f) + "%";
 
@@ -816,7 +562,7 @@ internal static class ViturgyAttunement
 {
     /// <summary>Highest level with a definition; covers the skill cap plus gear bonuses.</summary>
     internal const int MaxLevel = 12;
-    private const string KeyPrefix = "ArchmageProgression_ViturgyAttunement_";
+    private const string KeyPrefix = Plugin.KeyPrefix + "ArchmageProgression_ViturgyAttunement_";
     private static bool _clampLogged;
 
     internal static string StatusKey(int level) => KeyPrefix + level.ToString(CultureInfo.InvariantCulture);
@@ -903,6 +649,7 @@ internal static class ViturgyAttunement
     }
 }
 
+#if !OFFICIAL_MOD
 [HarmonyPatch(typeof(CharacterStatusConfigCatalog), nameof(CharacterStatusConfigCatalog.Load))]
 internal static class RankStatusCatalogPatch
 {
@@ -970,14 +717,14 @@ internal static class RankStatusCatalogPatch
                 // else the loader produced is reported rather than risk shadowing a
                 // base-game status.
                 var key = definition?.Id.Key;
-                if (key is null || !key.StartsWith("ArchmageProgression_", StringComparison.Ordinal))
+                if (key is null || !key.StartsWith(Plugin.KeyPrefix + "ArchmageProgression_", StringComparison.Ordinal))
                 {
                     Plugin.ModLog.LogWarning(
                         $"Skipped an unexpected status definition from {root}: '{key ?? "<null>"}'.");
                     continue;
                 }
 
-                FillDescription(definition!);
+                StatusDescriptions.Fill(definition!);
                 __instance.Add(definition!);
                 injected++;
             }
@@ -995,12 +742,20 @@ internal static class RankStatusCatalogPatch
         }
     }
 
+}
+#endif
+
+/// <summary>
+/// Tune the mod's status definitions to this install's settings after they load.
+/// </summary>
+internal static class StatusDescriptions
+{
     /// <summary>
     /// Replace the {Threshold}, {PerLevel} and {MinBonus} tokens in a rank status's
     /// description with the values from this install's config, so the tooltip the player
     /// reads always matches what the plugin is actually granting.
     /// </summary>
-    private static void FillDescription(CharacterStatusConfig definition)
+    internal static void Fill(CharacterStatusConfig definition)
     {
         var key = definition.Id.Key ?? string.Empty;
         if (ViturgyAttunement.TryConfigure(definition) || SchoolPowers.TryConfigure(definition) ||
@@ -1043,7 +798,9 @@ internal static class RankStatusCatalogPatch
 /// It also strips badges from saves when the feature has been switched off, which is the
 /// supported way to clean a save before uninstalling.
 /// </summary>
+#if !OFFICIAL_MOD
 [HarmonyPatch(typeof(UpdateMaxedSkillStatusSystem), nameof(UpdateMaxedSkillStatusSystem.Update))]
+#endif
 internal static class RankStatusSweepPatch
 {
     private static readonly List<SkillsComponent> Scratch = new();
@@ -1056,7 +813,7 @@ internal static class RankStatusSweepPatch
     private static bool _mageCountLogged;
 
     [HarmonyPostfix]
-    private static void RefreshAllRanks(Simulation __0)
+    internal static void RefreshAllRanks(Simulation __0)
     {
         if (!_firstRunLogged)
         {
@@ -1071,6 +828,10 @@ internal static class RankStatusSweepPatch
         {
             return;
         }
+
+#if OFFICIAL_MOD
+        LegacyStatuses.Migrate(__0);
+#endif
 
         try
         {
@@ -1173,6 +934,78 @@ internal static class RankStatusSweepPatch
         }
     }
 }
+
+#if OFFICIAL_MOD
+/// <summary>
+/// Saves made with the BepInEx build carry this mod's statuses under their un-namespaced
+/// keys. OfficialEntry registers those keys as aliases so such saves still resolve them;
+/// the first sweep of each session removes every legacy status, and the sweep then grants
+/// the namespaced ones in their place.
+/// </summary>
+internal static class LegacyStatuses
+{
+    internal const string Prefix = "ArchmageProgression_";
+
+    private static readonly List<CharacterStatusComponent> Scratch = new();
+    private static readonly List<string> Keys = new();
+    private static Simulation? _migrated;
+
+    internal static void Migrate(Simulation simulation)
+    {
+        if (ReferenceEquals(_migrated, simulation))
+        {
+            return;
+        }
+
+        _migrated = simulation;
+        var removed = 0;
+        try
+        {
+            // Every character, in school or away on a quest. Gather first: removing a
+            // status can detach components.
+            Scratch.Clear();
+            foreach (var statuses in simulation.ComponentManager.AllEnumerator<CharacterStatusComponent>())
+            {
+                Scratch.Add(statuses);
+            }
+
+            foreach (var statuses in Scratch)
+            {
+                Keys.Clear();
+                foreach (var id in statuses.Statuses.Keys)
+                {
+                    if (id.Key is { } key && key.StartsWith(Prefix, StringComparison.Ordinal))
+                    {
+                        Keys.Add(key);
+                    }
+                }
+
+                foreach (var key in Keys)
+                {
+                    CharacterStatusUtils.RemoveStatusKey(key, statuses);
+                    removed++;
+                }
+            }
+        }
+        catch (Exception exception)
+        {
+            Plugin.ModLog.LogError($"Failed to migrate statuses saved by the BepInEx build: {exception}");
+        }
+        finally
+        {
+            Scratch.Clear();
+            Keys.Clear();
+        }
+
+        if (removed > 0)
+        {
+            Plugin.ModLog.LogInfo(
+                $"Removed {removed} statuses saved by the BepInEx build; the sweep grants them again " +
+                "under the official mod's keys.");
+        }
+    }
+}
+#endif
 
 /// <summary>
 /// Immediate response: the moment a mage's trained skill level changes, re-check its ranks
@@ -1391,10 +1224,10 @@ internal static class SchoolPowers
 {
     internal const int NatureEmbraceLevels = 20;
     internal const int CouncilBadgeLevels = 40;
-    private const string EmbracePrefix = "ArchmageProgression_NatureEmbrace_";
-    private const string BadgePrefix = "ArchmageProgression_CouncilBadge_";
-    internal const string ResolveKey = "ArchmageProgression_CouncilEffect_Conviction";
-    internal const string ScholarshipKey = "ArchmageProgression_CouncilEffect_Scholarship";
+    private const string EmbracePrefix = Plugin.KeyPrefix + "ArchmageProgression_NatureEmbrace_";
+    private const string BadgePrefix = Plugin.KeyPrefix + "ArchmageProgression_CouncilBadge_";
+    internal const string ResolveKey = Plugin.KeyPrefix + "ArchmageProgression_CouncilEffect_Conviction";
+    internal const string ScholarshipKey = Plugin.KeyPrefix + "ArchmageProgression_CouncilEffect_Scholarship";
 
     private static int _lastCouncilCount = -1;
 
@@ -2336,8 +2169,8 @@ internal static class LightningManaVeinPatch
 /// </summary>
 internal static class FireRenewal
 {
-    internal const string RenewedKey = "ArchmageProgression_FireRenewed";
-    internal const string CooldownKey = "ArchmageProgression_FireRenewalCooldown";
+    internal const string RenewedKey = Plugin.KeyPrefix + "ArchmageProgression_FireRenewed";
+    internal const string CooldownKey = Plugin.KeyPrefix + "ArchmageProgression_FireRenewalCooldown";
     private static readonly List<DefId<InjuryDefinition>> InjuryScratch = new();
     private static readonly List<DefId<CharacterStatusConfig>> StatusScratch = new();
 
@@ -2568,7 +2401,7 @@ internal static class DarkReagentBountyPatch
 /// </summary>
 internal static class NexusGateway
 {
-    internal const string Key = "ArchmageProgression_NexusGateway";
+    internal const string Key = Plugin.KeyPrefix + "ArchmageProgression_NexusGateway";
 }
 
 /// <summary>Buildings this plugin injects from Content/Entities.</summary>
@@ -2577,6 +2410,7 @@ internal static class ModBuildables
     internal static readonly string[] Keys = { NexusGateway.Key, WatersOfReturn.Key };
 }
 
+#if !OFFICIAL_MOD
 [HarmonyPatch(typeof(ConfigData), nameof(ConfigData.Load))]
 internal static class NexusGatewayCatalogPatch
 {
@@ -2626,6 +2460,8 @@ internal static class NexusGatewayCatalogPatch
         }
     }
 }
+
+#endif
 
 [HarmonyPatch(typeof(BuildableUtils), nameof(BuildableUtils.GetBuildableArchetypes))]
 internal static class NexusGatewayBuildablePatch
@@ -2911,7 +2747,7 @@ internal static class CouncilSwiftTravelPatch
 /// </summary>
 internal static class WatersOfReturn
 {
-    internal const string Key = "ArchmageProgression_WatersOfReturn";
+    internal const string Key = Plugin.KeyPrefix + "ArchmageProgression_WatersOfReturn";
 
     internal sealed class Target
     {

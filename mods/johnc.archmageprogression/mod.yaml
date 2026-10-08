@@ -1,0 +1,11 @@
+modId: johnc.archmageprogression
+name: Archmage Progression
+author: John Champaign
+version: 0.3.0
+description: Every magic skill level gives a bonus, mages earn Adept at level 5 and Archmage at level 8 in each school with powers to match, and the school's Archmages form a Council with school-wide powers. Earth and Water Archmages unlock the Nexus Gateway and the Waters of Return fountain.
+gameVersion: "1.0.0"
+
+tags:
+  - Content
+  - Progression
+  - Balance

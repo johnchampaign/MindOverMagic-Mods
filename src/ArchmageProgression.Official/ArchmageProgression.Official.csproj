@@ -1,0 +1,44 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Archmage Progression for the game's own mod support (the mod_testing beta).
+       Shares its source with ..\ArchmageAscension, the BepInEx build. -->
+  <PropertyGroup>
+    <TargetFramework>netstandard2.1</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <AssemblyName>JohncArchmageProgression</AssemblyName>
+    <RootNamespace>ArchmageProgression</RootNamespace>
+    <DefineConstants>$(DefineConstants);OFFICIAL_MOD</DefineConstants>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <ModSource>$(MSBuildThisFileDirectory)..\..\mods\johnc.archmageprogression</ModSource>
+    <ModStage>$(MSBuildThisFileDirectory)..\..\dist\official\johnc.archmageprogression</ModStage>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="OfficialEntry.cs" />
+    <Compile Include="..\ArchmageAscension\Plugin.cs" Link="Shared\Plugin.cs" />
+    <Compile Include="..\ArchmageAscension\Settings.cs" Link="Shared\Settings.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- The game's own Harmony, never BepInEx's; neither is shipped. -->
+    <Reference Include="0Harmony">
+      <HintPath>$(GameManagedDir)\0Harmony.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Simulation">
+      <HintPath>$(GameManagedDir)\Simulation.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+
+  <!-- Assemble the installable mod folder: mod.yaml, the DLL, and the shared status and
+       building definitions as Defs. -->
+  <Target Name="StageOfficialMod" AfterTargets="Build">
+    <ItemGroup>
+      <ModRootFile Include="$(ModSource)\*" />
+      <ModDefsFile Include="..\ArchmageAscension\Content\**\*.yaml" />
+    </ItemGroup>
+    <RemoveDir Directories="$(ModStage)" />
+    <Copy SourceFiles="@(ModRootFile)" DestinationFolder="$(ModStage)" />
+    <Copy SourceFiles="$(TargetPath)" DestinationFolder="$(ModStage)\Assemblies" />
+    <Copy SourceFiles="@(ModDefsFile)" DestinationFiles="@(ModDefsFile->'$(ModStage)\Defs\%(RecursiveDir)%(Filename)%(Extension)')" />
+  </Target>
+</Project>

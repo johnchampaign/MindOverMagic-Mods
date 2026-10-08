@@ -7,6 +7,7 @@ Players on the public build should keep using the BepInEx modules in `src/`.
 | Mod | Version | Kind | Replaces |
 | --- | --- | --- | --- |
 | `johnc.factionbalance` | 2.0.0 | YAML only, no code | Faction Balance 1.0.0 (BepInEx) |
+| `johnc.archmageprogression` | 0.3.0 | C# and YAML | Archmage Progression 0.2.1 (BepInEx) |
 
 ## Installing
 
@@ -16,7 +17,14 @@ Players on the public build should keep using the BepInEx modules in `src/`.
    **Restart**.
 
 Do not run a port alongside its BepInEx version: both would apply the same
-change.
+change. The BepInEx Faction Balance 1.0.0 also fails to load on the beta,
+which added a second `ConfigBundle.Load` overload.
+
+`johnc.factionbalance` is complete as it sits in this folder. Archmage
+Progression is built: `dotnet build src/ArchmageProgression.Official -c Release`
+assembles the installable folder in `dist/official/johnc.archmageprogression`
+from this folder's `mod.yaml`, the compiled DLL, and the status and building
+definitions it shares with the BepInEx build.
 
 ## Faction Balance 2.0.0
 
@@ -42,3 +50,30 @@ otherwise has none. To change the numbers, edit
 
 Like any mod on the beta, a school played with it enabled stops earning Steam
 achievements.
+
+## Archmage Progression 0.3.0
+
+The same features and defaults as the BepInEx build, from the same source:
+`src/ArchmageProgression.Official` compiles `src/ArchmageAscension`'s
+`Plugin.cs` and `Settings.cs` with `OFFICIAL_MOD` defined, plus its own
+`OfficialEntry.cs`. What differs:
+
+| | BepInEx build | Official build |
+| --- | --- | --- |
+| Statuses and buildings | Injected into the game's catalogs from `Content/` | Loaded by the game from `Defs/` |
+| Definition keys | `ArchmageProgression_...` | `johnc.archmageprogression.ArchmageProgression_...` (the game namespaces them) |
+| Settings | `BepInEx\config\ca.johnc.mindovermagic.archmageprogression.cfg` | **Settings** on the Mods screen, stored in `ModSettings\johnc.archmageprogression.yaml` |
+| Periodic sweep | Postfix on the game's skill-status system | A registered simulation process, every game-second |
+| Harmony | BepInEx's | The game's, through the mod's own instance |
+
+Settings keep the BepInEx names internally (`Section/Key` in the settings
+file) but show shorter labels on screen, with the full explanation on hover.
+They take effect on the next launch.
+
+**Saves from the BepInEx build.** Those saves hold rank and Council statuses
+under the old, un-namespaced keys. The official build registers those keys as
+aliases so the save resolves them, then on the first sweep after loading it
+removes every old status; the sweep grants the new ones straight after, so the
+log book may show each rank being lost and earned again once. Nexus Gateways
+and Waters of Return fountains are not aliased: demolish them before moving a
+save from the BepInEx build to this one.

@@ -2637,6 +2637,11 @@ internal static class NexusGatewayCatalogPatch
         }
         finally
         {
+            // A catalog's constructor makes it the static current instance. Hand that back to
+            // the live catalog, or later lookups such as the ingredient index resolve
+            // archetypes against the two-entry temporary one and throw.
+            ConfigData.Instance = __instance;
+            DefinitionCatalog<Archetype>.Instance = __instance;
             _loadingMod = false;
         }
     }

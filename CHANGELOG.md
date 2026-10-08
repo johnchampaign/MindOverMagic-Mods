@@ -11,6 +11,11 @@
   the teacher's teaching bonuses, and Scholarship was one status carrying both.
   It is now two: Scholarship for learning and a hidden companion for teaching.
   The speed-up is unchanged.
+- Fix a load-time error when Archmage Progression is installed without
+  Sacrificial Altar. Loading the Nexus Gateway and Waters of Return definitions
+  left a temporary catalog as the game's current archetype catalog, so the
+  game's ingredient index looked buildings up in it and threw during startup.
+  The live catalog is now restored afterwards.
 
 ## Bundle v1.2.3 - 2026-10-07
 
